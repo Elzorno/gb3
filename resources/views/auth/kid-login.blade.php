@@ -41,7 +41,7 @@
         <button type="submit">Log In</button>
     </form>
 
-    <div class="note">Scaffold mode uses env GB2_AUTH_STUB_PIN (default 123456).</div>
+    <div class="note">Login validates the entered PIN against this kid account in the rewrite database.</div>
 </div>
 </body>
 </html>

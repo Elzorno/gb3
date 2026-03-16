@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Tests\Feature;
 
+use App\Models\Kid;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
@@ -21,6 +22,13 @@ class KidAuthRoutesTest extends TestCase
 
     public function test_successful_stub_login_sets_session_and_redirects_home(): void
     {
+        Kid::query()->create([
+            'id' => 1,
+            'display_name' => 'Kid One',
+            'pin_hash' => password_hash('123456', PASSWORD_ARGON2ID),
+            'sort_order' => 0,
+        ]);
+
         $res = $this->post('/kid/login', [
             'kid_id' => 1,
             'pin' => '123456',
@@ -35,6 +43,13 @@ class KidAuthRoutesTest extends TestCase
 
     public function test_invalid_pin_rejected(): void
     {
+        Kid::query()->create([
+            'id' => 1,
+            'display_name' => 'Kid One',
+            'pin_hash' => password_hash('123456', PASSWORD_ARGON2ID),
+            'sort_order' => 0,
+        ]);
+
         $res = $this->from('/kid/login')->post('/kid/login', [
             'kid_id' => 1,
             'pin' => '999999',
@@ -47,6 +62,13 @@ class KidAuthRoutesTest extends TestCase
     public function test_rate_limit_lockout_blocks_even_correct_pin(): void
     {
         $kidId = 9;
+        Kid::query()->create([
+            'id' => $kidId,
+            'display_name' => 'Kid Nine',
+            'pin_hash' => password_hash('123456', PASSWORD_ARGON2ID),
+            'sort_order' => 0,
+        ]);
+
         $ip = '10.0.0.1';
         $ua = 'PHPUnit-Auth-Test';
         $key = hash('sha256', $kidId . '|' . $ip . '|' . $ua);

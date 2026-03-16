@@ -6,6 +6,7 @@ namespace App\Http\Controllers;
 
 use App\Domain\Auth\KidSessionService;
 use App\Domain\Auth\PinRateLimiter;
+use App\Models\Kid;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\View\View;
@@ -47,10 +48,17 @@ class KidAuthController extends Controller
             return back()->withInput()->withErrors(['pin' => 'Too many attempts. Please wait ' . $wait . '.']);
         }
 
-        // Temporary scaffold auth path.
-        // Replace with DB-backed kid auth in module implementation phase.
-        $stubPin = (string)env('GB2_AUTH_STUB_PIN', '123456');
-        if ($pin !== $stubPin) {
+        $kid = Kid::query()->find($kidId);
+        if ($kid === null) {
+            return back()->withInput()->withErrors(['kid_id' => 'Kid account was not found.']);
+        }
+
+        $hash = (string)($kid->pin_hash ?? '');
+        if ($hash === '') {
+            return back()->withInput()->withErrors(['pin' => 'PIN is not set for this kid yet.']);
+        }
+
+        if (!password_verify($pin, $hash)) {
             $after = $limiter->recordFailure($lockKey);
             if ($after > 0) {
                 $wait = $this->kidSessions->formatWait($after);
@@ -61,7 +69,7 @@ class KidAuthController extends Controller
         }
 
         $limiter->clear($lockKey);
-        $this->kidSessions->loginKid($request, $kidId);
+        $this->kidSessions->loginKid($request, (int)$kid->id);
 
         return redirect()->route('rewrite.home')->with('status', 'Kid session started.');
     }
