@@ -47,6 +47,27 @@
     <div style="margin-top:.85rem;">
         {{ $rows->links() }}
     </div>
+
+    <h2 style="margin-top:1.2rem;">Infractions</h2>
+    @forelse($infractions as $e)
+        @php
+            $blocks = json_decode((string)($e->blocks_json ?? '{}'), true);
+            $blocks = is_array($blocks) ? $blocks : [];
+            $on = [];
+            foreach (['phone', 'games', 'other'] as $w) {
+                if ((int)($blocks[$w] ?? 0) === 1) {
+                    $on[] = $w;
+                }
+            }
+        @endphp
+        <div class="item">
+            <div><strong>{{ $e->definition?->label }}</strong> · strike {{ $e->strike_after }} · {{ $e->ts }}</div>
+            <div>days={{ $e->days_applied }} · mode={{ $e->mode }} · blocks={{ $on ? implode(', ', $on) : 'none' }}</div>
+            <div>review={{ $e->reviewed_at ? ('reviewed: ' . ($e->review_action ?: 'done')) : 'pending' }}</div>
+        </div>
+    @empty
+        <p>No infractions found.</p>
+    @endforelse
 </div>
 </body>
 </html>

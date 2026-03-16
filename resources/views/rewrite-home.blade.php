@@ -26,6 +26,8 @@
     <a class="btn" href="{{ route('bonus.index') }}">Bonuses</a>
     <a class="btn" href="{{ route('submission.create') }}">Submit Proof</a>
     <a class="btn" href="{{ route('history.index') }}">History</a>
+    <a class="btn" href="{{ route('infraction.index') }}">Infractions</a>
+    <a class="btn" href="{{ route('infraction.review') }}">Infraction Review</a>
     <a class="btn" href="{{ route('review.index') }}">Review Queue</a>
     <form method="post" action="{{ route('kid.logout') }}" style="display:inline-block">
         @csrf

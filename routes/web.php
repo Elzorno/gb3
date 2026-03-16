@@ -1,6 +1,8 @@
 <?php
 
 use App\Http\Controllers\BonusController;
+use App\Http\Controllers\InfractionController;
+use App\Http\Controllers\InfractionReviewController;
 use App\Http\Controllers\HistoryController;
 use App\Http\Controllers\KidAuthController;
 use App\Http\Controllers\ReviewController;
@@ -25,6 +27,11 @@ Route::post('/bonus/claim', [BonusController::class, 'claim'])->name('bonus.clai
 Route::post('/bonus/submit', [BonusController::class, 'submit'])->name('bonus.submit');
 
 Route::get('/history', [HistoryController::class, 'index'])->name('history.index');
+
+Route::get('/infractions', [InfractionController::class, 'index'])->name('infraction.index');
+Route::post('/infractions/apply', [InfractionController::class, 'apply'])->name('infraction.apply');
+Route::get('/infractions/review', [InfractionReviewController::class, 'index'])->name('infraction.review');
+Route::post('/infractions/review', [InfractionReviewController::class, 'decide'])->name('infraction.review.decide');
 
 Route::get('/review', [ReviewController::class, 'index'])->name('review.index');
 Route::post('/review/decide', [ReviewController::class, 'decide'])->name('review.decide');

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers;
 
+use App\Models\InfractionEvent;
 use App\Models\Submission;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -37,8 +38,17 @@ class HistoryController extends Controller
 
         $rows = $q->paginate($perPage)->withQueryString();
 
+        $infractions = InfractionEvent::query()
+            ->with(['definition'])
+            ->where('kid_id', $kidId)
+            ->orderByDesc('ts')
+            ->orderByDesc('id')
+            ->limit(30)
+            ->get();
+
         return view('history.index', [
             'rows' => $rows,
+            'infractions' => $infractions,
             'status' => $status,
             'kind' => $kind,
             'perPage' => $perPage,
