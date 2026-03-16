@@ -1,0 +1,49 @@
+<?php
+
+declare(strict_types=1);
+
+namespace Tests\Feature;
+
+use App\Domain\Rotation\RotationPlanner;
+use App\Models\ChoreSlot;
+use App\Models\Kid;
+use App\Models\RotationRule;
+use Carbon\CarbonImmutable;
+use Illuminate\Foundation\Testing\RefreshDatabase;
+use Tests\TestCase;
+
+class RotationAssignmentsTest extends TestCase
+{
+    use RefreshDatabase;
+
+    public function test_rotation_today_route_is_reachable(): void
+    {
+        $res = $this->get('/rotation/today');
+
+        $res->assertOk();
+        $res->assertSee('Rotation Today');
+    }
+
+    public function test_planner_generates_weekday_assignments_from_rule(): void
+    {
+        Kid::query()->create(['display_name' => 'A', 'sort_order' => 0]);
+        Kid::query()->create(['display_name' => 'B', 'sort_order' => 1]);
+
+        ChoreSlot::query()->create(['title' => 'Dishes', 'active' => true, 'sort_order' => 0]);
+        ChoreSlot::query()->create(['title' => 'Trash', 'active' => true, 'sort_order' => 1]);
+
+        RotationRule::query()->create([
+            'name' => 'default',
+            'kids_json' => json_encode(['A', 'B'], JSON_THROW_ON_ERROR),
+            'slots_json' => json_encode(['Dishes', 'Trash'], JSON_THROW_ON_ERROR),
+            'anchor_monday' => '2026-03-16',
+        ]);
+
+        $planner = app(RotationPlanner::class);
+        $rows = $planner->ensureAssignmentsForDay(CarbonImmutable::parse('2026-03-16'));
+
+        $this->assertCount(2, $rows);
+        $this->assertSame('Dishes', $rows[0]->slot?->title);
+        $this->assertSame('Trash', $rows[1]->slot?->title);
+    }
+}
