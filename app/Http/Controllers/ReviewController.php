@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Http\Controllers;
 
 use App\Domain\Submission\SubmissionService;
+use App\Models\Submission;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\View\View;
@@ -16,10 +17,34 @@ class ReviewController extends Controller
     ) {
     }
 
-    public function index(): View
+    public function index(Request $request): View
     {
+        $status = (string)$request->query('status', 'pending');
+        $kind = (string)$request->query('kind', '');
+        $kidId = (int)$request->query('kid_id', 0);
+        $perPage = max(5, min(100, (int)$request->query('per_page', 20)));
+
+        $q = Submission::query()
+            ->with(['kid', 'slot'])
+            ->orderByDesc('submitted_at')
+            ->orderByDesc('id');
+
+        if (in_array($status, ['pending', 'approved', 'rejected'], true)) {
+            $q->where('status', $status);
+        }
+        if (in_array($kind, ['base', 'bonus'], true)) {
+            $q->where('kind', $kind);
+        }
+        if ($kidId > 0) {
+            $q->where('kid_id', $kidId);
+        }
+
         return view('review.index', [
-            'pending' => $this->service->pendingList(100),
+            'rows' => $q->paginate($perPage)->withQueryString(),
+            'status' => $status,
+            'kind' => $kind,
+            'kidId' => $kidId,
+            'perPage' => $perPage,
         ]);
     }
 
