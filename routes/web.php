@@ -1,7 +1,9 @@
 <?php
 
 use App\Http\Controllers\KidAuthController;
+use App\Http\Controllers\ReviewController;
 use App\Http\Controllers\RotationAssignmentsController;
+use App\Http\Controllers\SubmissionController;
 use Illuminate\Support\Facades\Route;
 
 Route::get('/', function () {
@@ -12,3 +14,9 @@ Route::get('/kid/login', [KidAuthController::class, 'showLogin'])->name('kid.log
 Route::post('/kid/login', [KidAuthController::class, 'login'])->name('kid.login.submit');
 Route::post('/kid/logout', [KidAuthController::class, 'logout'])->name('kid.logout');
 Route::get('/rotation/today', [RotationAssignmentsController::class, 'today'])->name('rotation.today');
+
+Route::get('/submission', [SubmissionController::class, 'create'])->name('submission.create');
+Route::post('/submission/base', [SubmissionController::class, 'storeBase'])->name('submission.storeBase');
+
+Route::get('/review', [ReviewController::class, 'index'])->name('review.index');
+Route::post('/review/decide', [ReviewController::class, 'decide'])->name('review.decide');

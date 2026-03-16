@@ -23,6 +23,8 @@
 
     <a class="btn" href="{{ route('kid.login') }}">Kid Login</a>
     <a class="btn" href="{{ route('rotation.today') }}">Rotation Today</a>
+    <a class="btn" href="{{ route('submission.create') }}">Submit Proof</a>
+    <a class="btn" href="{{ route('review.index') }}">Review Queue</a>
     <form method="post" action="{{ route('kid.logout') }}" style="display:inline-block">
         @csrf
         <button class="btn" type="submit">Logout</button>
