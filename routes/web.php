@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\BonusController;
 use App\Http\Controllers\KidAuthController;
 use App\Http\Controllers\ReviewController;
 use App\Http\Controllers\RotationAssignmentsController;
@@ -17,6 +18,10 @@ Route::get('/rotation/today', [RotationAssignmentsController::class, 'today'])->
 
 Route::get('/submission', [SubmissionController::class, 'create'])->name('submission.create');
 Route::post('/submission/base', [SubmissionController::class, 'storeBase'])->name('submission.storeBase');
+
+Route::get('/bonus', [BonusController::class, 'index'])->name('bonus.index');
+Route::post('/bonus/claim', [BonusController::class, 'claim'])->name('bonus.claim');
+Route::post('/bonus/submit', [BonusController::class, 'submit'])->name('bonus.submit');
 
 Route::get('/review', [ReviewController::class, 'index'])->name('review.index');
 Route::post('/review/decide', [ReviewController::class, 'decide'])->name('review.decide');

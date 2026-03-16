@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Domain\Submission;
 
 use App\Models\Assignment;
+use App\Models\BonusInstance;
 use App\Models\Submission;
 use Carbon\CarbonImmutable;
 use Illuminate\Database\DatabaseManager;
@@ -64,6 +65,15 @@ class SubmissionService
                     ->whereDate('day', $sub->day->format('Y-m-d'))
                     ->where('kid_id', $sub->kid_id)
                     ->where('slot_id', $sub->slot_id)
+                    ->update([
+                        'status' => $decision,
+                        'updated_at' => now(),
+                    ]);
+            }
+
+            if ($sub->kind === 'bonus' && $sub->bonus_instance_id) {
+                BonusInstance::query()
+                    ->where('id', $sub->bonus_instance_id)
                     ->update([
                         'status' => $decision,
                         'updated_at' => now(),
