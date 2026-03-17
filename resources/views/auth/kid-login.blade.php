@@ -21,7 +21,7 @@
             <div class="form-group">
                 <div class="kid-selector" role="radiogroup" aria-label="Select your name">
                     @php
-                        $kids = \App\Models\Kid::orderBy('name')->get();
+                        $kids = \App\Models\Kid::orderBy('sort_order')->get();
                     @endphp
                     
                     @forelse($kids as $kid)

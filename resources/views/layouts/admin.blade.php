@@ -10,7 +10,7 @@
                 @hasSection('header-title')
                     @yield('header-title')
                 @else
-                    {{ config('app.branding.family_name', 'Family') }} Dashboard
+                    {{ $familyName ?? 'Family' }} Dashboard
                 @endif
             </h1>
         </div>

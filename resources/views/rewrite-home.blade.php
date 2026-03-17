@@ -21,19 +21,19 @@
     <p class="muted">Auth/Session module scaffold is active. This screen confirms kid session bootstrap in rewrite app.</p>
     <p>Current kid session id: <strong>{{ session('gb2_kid_id', 'none') }}</strong></p>
 
-    <a class="btn" href="{{ route('kid.login') }}">Kid Login</a>
+    <a class="btn" href="{{ route('app.login') }}">Kid Login</a>
     <a class="btn" href="/admin/login.php">Parent Login</a>
     <a class="btn" href="/admin/setup.php">Setup</a>
     <a class="btn" href="/admin/family.php">Family Dashboard</a>
     <a class="btn" href="/admin/branding.php">Branding</a>
-    <a class="btn" href="{{ route('rotation.today') }}">Rotation Today</a>
-    <a class="btn" href="{{ route('bonus.index') }}">Bonuses</a>
-    <a class="btn" href="{{ route('submission.create') }}">Submit Proof</a>
-    <a class="btn" href="{{ route('history.index') }}">History</a>
-    <a class="btn" href="{{ route('infraction.index') }}">Infractions</a>
-    <a class="btn" href="{{ route('infraction.review') }}">Infraction Review</a>
-    <a class="btn" href="{{ route('review.index') }}">Review Queue</a>
-    <form method="post" action="{{ route('kid.logout') }}" style="display:inline-block">
+    <a class="btn" href="{{ route('app.today') }}">Rotation Today</a>
+    <a class="btn" href="{{ route('app.bonuses') }}">Bonuses</a>
+    <a class="btn" href="{{ route('app.submit') }}">Submit Proof</a>
+    <a class="btn" href="{{ route('app.history') }}">History</a>
+    <a class="btn" href="{{ route('admin.infractions') }}">Infractions</a>
+    <a class="btn" href="{{ route('admin.infractions.review') }}">Infraction Review</a>
+    <a class="btn" href="{{ route('admin.reviews') }}">Review Queue</a>
+    <form method="post" action="{{ route('app.logout') }}" style="display:inline-block">
         @csrf
         <button class="btn" type="submit">Logout</button>
     </form>

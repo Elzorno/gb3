@@ -14,10 +14,10 @@ class KidAuthRoutesTest extends TestCase
 
     public function test_login_page_is_reachable(): void
     {
-        $res = $this->get('/kid/login');
+        $res = $this->get('/app/login');
 
         $res->assertOk();
-        $res->assertSee('Kid Login');
+        $res->assertSee('Who are you?');
     }
 
     public function test_successful_stub_login_sets_session_and_redirects_home(): void
@@ -29,16 +29,13 @@ class KidAuthRoutesTest extends TestCase
             'sort_order' => 0,
         ]);
 
-        $res = $this->post('/kid/login', [
+        $res = $this->post('/app/login', [
             'kid_id' => 1,
             'pin' => '123456',
         ]);
 
-        $res->assertRedirect('/');
-        $this->followRedirects($res)
-            ->assertSee('Kid session started.')
-            ->assertSee('Current kid session id:')
-            ->assertSee('1');
+        $res->assertRedirect(route('app.today'));
+        $res->assertSessionHas('gb2_kid_id', 1);
     }
 
     public function test_invalid_pin_rejected(): void
@@ -50,12 +47,12 @@ class KidAuthRoutesTest extends TestCase
             'sort_order' => 0,
         ]);
 
-        $res = $this->from('/kid/login')->post('/kid/login', [
+        $res = $this->from('/app/login')->post('/app/login', [
             'kid_id' => 1,
             'pin' => '999999',
         ]);
 
-        $res->assertRedirect('/kid/login');
+        $res->assertRedirect('/app/login');
         $this->followRedirects($res)->assertSee('PIN did not match.');
     }
 
@@ -88,13 +85,13 @@ class KidAuthRoutesTest extends TestCase
                     ],
                 ],
             ])
-            ->from('/kid/login')
-            ->post('/kid/login', [
+            ->from('/app/login')
+            ->post('/app/login', [
                 'kid_id' => $kidId,
                 'pin' => '123456',
             ]);
 
-        $res->assertRedirect('/kid/login');
+        $res->assertRedirect('/app/login');
         $res->assertSessionHasErrors('pin');
     }
 }

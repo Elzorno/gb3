@@ -79,7 +79,7 @@
                             <div class="checklist-meta">
                                 @if($a->status === 'completed')
                                     Completed
-                                @elseif($a->status === 'pending_review')
+                                @elseif($a->status === 'pending')
                                     Waiting for review
                                 @else
                                     Not started

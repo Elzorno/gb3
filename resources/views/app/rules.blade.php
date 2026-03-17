@@ -54,7 +54,7 @@
                                         <div class="chore-status">
                                             @if($status === 'approved' || $status === 'completed')
                                                 <span class="status-icon">✓</span>
-                                            @elseif($status === 'pending_review')
+                                            @elseif($status === 'pending')
                                                 <span class="status-icon">⏳</span>
                                             @elseif($status === 'rejected')
                                                 <span class="status-icon">↩</span>
@@ -236,7 +236,7 @@
         color: var(--success);
     }
 
-    .status-pending_review .status-icon {
+    .status-pending .status-icon {
         color: var(--warning);
     }
 

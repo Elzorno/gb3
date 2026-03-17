@@ -64,6 +64,6 @@ class InfractionReviewController extends Controller
             0,
         );
 
-        return redirect()->route('infraction.review')->with('status', 'Infraction review saved.');
+        return redirect()->route('admin.infractions.review')->with('status', 'Infraction review saved.');
     }
 }

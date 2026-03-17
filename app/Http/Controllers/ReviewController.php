@@ -40,7 +40,7 @@ class ReviewController extends Controller
             $q->where('kid_id', $kidId);
         }
 
-        $kids = Kid::orderBy('display_order')->get();
+        $kids = Kid::orderBy('sort_order')->get();
         $pendingCount = Submission::where('status', 'pending')->count();
 
         return view('admin.reviews.index', [

@@ -5,13 +5,19 @@
 @section('header-title', 'Settings')
 
 @section('content')
+    @if(session('success'))
+        <div class="alert alert-success mb-4">
+            {{ session('success') }}
+        </div>
+    @endif
+
     {{-- Branding Settings --}}
     <div class="card">
         <div class="card-header">
             <h3 class="card-title">Branding</h3>
         </div>
 
-        <form method="POST" action="{{ route('admin.settings') }}" class="space-y-4">
+        <form method="POST" action="{{ route('admin.settings.update') }}" class="space-y-4">
             @csrf
             
             <div class="form-group">
@@ -21,9 +27,12 @@
                     id="family_name" 
                     name="family_name" 
                     class="form-input"
-                    value="{{ old('family_name', DB::table('settings')->where('key', 'family_name')->value('value') ?? '') }}"
+                    value="{{ old('family_name', $familyName ?? '') }}"
                     placeholder="The Smith Family"
                 >
+                @error('family_name')
+                    <p class="form-error">{{ $message }}</p>
+                @enderror
                 <p class="form-hint">Displayed in the app header.</p>
             </div>
             
@@ -37,7 +46,7 @@
             <h3 class="card-title">Security</h3>
         </div>
 
-        <form method="POST" action="{{ route('admin.settings') }}" class="space-y-4">
+        <form method="POST" action="{{ route('admin.settings.update') }}" class="space-y-4">
             @csrf
             <input type="hidden" name="section" value="password">
             

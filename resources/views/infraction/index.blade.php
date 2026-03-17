@@ -20,7 +20,7 @@
         <p class="ok">{{ session('status') }}</p>
     @endif
 
-    <form method="post" action="{{ route('infraction.apply') }}" class="grid" style="margin-bottom:.75rem;">
+    <form method="post" action="{{ route('admin.infractions.apply') }}" class="grid" style="margin-bottom:.75rem;">
         @csrf
         <label>
             Kid
@@ -49,7 +49,7 @@
         </div>
     </form>
 
-    <p><a href="{{ route('infraction.review') }}">Open review queue</a></p>
+    <p><a href="{{ route('admin.infractions.review') }}">Open review queue</a></p>
 
     <h2>Recent events</h2>
     @forelse($events as $e)

@@ -19,7 +19,7 @@ class PrivilegeController extends Controller
     public function index(): View
     {
         $kids = Kid::with('privileges')
-            ->orderBy('display_order')
+            ->orderBy('sort_order')
             ->get();
 
         // Auto-unlock any expired locks

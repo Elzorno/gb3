@@ -8,6 +8,8 @@ use App\Models\Assignment;
 use App\Models\ChoreSlot;
 use App\Models\Kid;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\Storage;
 use Tests\TestCase;
 
 class SubmissionReviewFlowTest extends TestCase
@@ -16,6 +18,8 @@ class SubmissionReviewFlowTest extends TestCase
 
     public function test_kid_can_submit_base_chore_and_queue_it_for_review(): void
     {
+        Storage::fake('public');
+
         $kid = Kid::query()->create([
             'display_name' => 'Megan',
             'sort_order' => 0,
@@ -34,13 +38,13 @@ class SubmissionReviewFlowTest extends TestCase
             'status' => 'open',
         ]);
 
-        $res = $this->withSession(['gb2_kid_id' => $kid->id])->post('/submission/base', [
+        $res = $this->withSession(['gb2_kid_id' => $kid->id])->post('/app/submit', [
             'day' => '2026-03-16',
             'slot_id' => $slot->id,
-            'proof_path' => 'uploads/NO_PHOTO',
+            'photo' => UploadedFile::fake()->image('proof.jpg'),
         ]);
 
-        $res->assertRedirect('/submission');
+        $res->assertRedirect(route('app.today'));
 
         $this->assertDatabaseHas('submissions', [
             'kid_id' => $kid->id,
@@ -94,13 +98,17 @@ class SubmissionReviewFlowTest extends TestCase
             'submission_id' => $submissionId,
         ]);
 
-        $res = $this->post('/review/decide', [
+        $adminSession = ['gb2_admin_logged_in' => true];
+
+        \DB::table('settings')->insert(['key' => 'admin_password_hash', 'value' => 'test']);
+
+        $res = $this->withSession($adminSession)->post('/admin/reviews/decide', [
             'submission_id' => $submissionId,
             'decision' => 'approved',
             'note' => 'Looks good',
         ]);
 
-        $res->assertRedirect('/review');
+        $res->assertRedirect(route('admin.reviews'));
 
         $this->assertDatabaseHas('submissions', [
             'id' => $submissionId,

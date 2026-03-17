@@ -35,10 +35,12 @@ class BonusFlowTest extends TestCase
             'status' => 'available',
         ]);
 
-        $claimRes = $this->withSession(['gb2_kid_id' => $kid->id])->post('/bonus/claim', [
+        $kidSession = ['gb2_kid_id' => $kid->id];
+
+        $claimRes = $this->withSession($kidSession)->post('/app/bonuses/claim', [
             'instance_id' => $inst->id,
         ]);
-        $claimRes->assertRedirect('/bonus');
+        $claimRes->assertRedirect(route('app.bonuses'));
 
         $this->assertDatabaseHas('bonus_instances', [
             'id' => $inst->id,
@@ -46,11 +48,11 @@ class BonusFlowTest extends TestCase
             'claimed_by_kid_id' => $kid->id,
         ]);
 
-        $submitRes = $this->withSession(['gb2_kid_id' => $kid->id])->post('/bonus/submit', [
+        $submitRes = $this->withSession($kidSession)->post('/app/bonuses/submit', [
             'instance_id' => $inst->id,
             'proof_path' => 'uploads/NO_PHOTO',
         ]);
-        $submitRes->assertRedirect('/bonus');
+        $submitRes->assertRedirect(route('app.bonuses'));
 
         $submission = \DB::table('submissions')
             ->where('kind', 'bonus')
@@ -66,12 +68,17 @@ class BonusFlowTest extends TestCase
             'submission_id' => $submission->id,
         ]);
 
-        $reviewRes = $this->post('/review/decide', [
+        $adminSession = ['gb2_admin_logged_in' => true];
+
+        // Ensure admin auth middleware doesn't redirect to setup
+        \DB::table('settings')->insert(['key' => 'admin_password_hash', 'value' => 'test']);
+
+        $reviewRes = $this->withSession($adminSession)->post('/admin/reviews/decide', [
             'submission_id' => $submission->id,
             'decision' => 'approved',
             'note' => 'Great work',
         ]);
-        $reviewRes->assertRedirect('/review');
+        $reviewRes->assertRedirect(route('admin.reviews'));
 
         $this->assertDatabaseHas('submissions', [
             'id' => $submission->id,

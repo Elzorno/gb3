@@ -39,7 +39,7 @@
             @php
                 $total = $assignments->count();
                 $completed = $assignments->whereIn('status', ['approved', 'completed'])->count();
-                $pending = $assignments->where('status', 'pending_review')->count();
+                $pending = $assignments->where('status', 'pending')->count();
                 $percent = $total > 0 ? round(($completed / $total) * 100) : 0;
                 $circumference = 2 * 3.14159 * 45;
                 $dashOffset = $circumference - ($circumference * $percent / 100);
@@ -82,7 +82,7 @@
                 @foreach($assignments as $a)
                     @php
                         $isComplete = in_array($a->status, ['approved', 'completed']);
-                        $isPending = $a->status === 'pending_review';
+                        $isPending = $a->status === 'pending';
                         $isRejected = $a->status === 'rejected';
                     @endphp
                     <li class="checklist-item {{ $isComplete ? 'completed' : '' }} {{ $isPending ? 'pending' : '' }} {{ $isRejected ? 'rejected' : '' }}">
@@ -122,7 +122,7 @@
 
         {{-- Submit proof button (prominent CTA) --}}
         @php
-            $incomplete = $assignments->whereNotIn('status', ['approved', 'completed', 'pending_review'])->count();
+            $incomplete = $assignments->whereNotIn('status', ['approved', 'completed', 'pending'])->count();
         @endphp
         @if($incomplete > 0)
             <a href="{{ route('app.submit') }}" class="big-action-btn">

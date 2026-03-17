@@ -55,7 +55,10 @@ class ReviewFilteringTest extends TestCase
             ],
         ]);
 
-        $res = $this->get('/review?status=approved&kind=bonus');
+        \DB::table('settings')->insert(['key' => 'admin_password_hash', 'value' => 'test']);
+
+        $res = $this->withSession(['gb2_admin_logged_in' => true])
+            ->get('/admin/reviews?status=approved&kind=bonus');
 
         $res->assertOk();
         $res->assertSee('uploads/bonus-approved.jpg');

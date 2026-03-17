@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Tests\Feature;
 
+use App\Models\ChoreSlot;
 use App\Models\Kid;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
@@ -26,13 +27,25 @@ class KidHistoryFilteringTest extends TestCase
             'pin_hash' => password_hash('123456', PASSWORD_ARGON2ID),
         ]);
 
+        $slotA = ChoreSlot::query()->create([
+            'title' => 'Dishes For A',
+            'active' => true,
+            'sort_order' => 0,
+        ]);
+
+        $slotB = ChoreSlot::query()->create([
+            'title' => 'Trash For B',
+            'active' => true,
+            'sort_order' => 1,
+        ]);
+
         \DB::table('submissions')->insert([
             [
                 'kind' => 'base',
                 'day' => '2026-03-16',
                 'week_start' => null,
                 'kid_id' => $kidA->id,
-                'slot_id' => null,
+                'slot_id' => $slotA->id,
                 'bonus_instance_id' => null,
                 'proof_path' => 'uploads/a-approved.jpg',
                 'status' => 'approved',
@@ -64,7 +77,7 @@ class KidHistoryFilteringTest extends TestCase
                 'day' => '2026-03-16',
                 'week_start' => null,
                 'kid_id' => $kidB->id,
-                'slot_id' => null,
+                'slot_id' => $slotB->id,
                 'bonus_instance_id' => null,
                 'proof_path' => 'uploads/b-approved.jpg',
                 'status' => 'approved',
@@ -77,11 +90,11 @@ class KidHistoryFilteringTest extends TestCase
             ],
         ]);
 
-        $res = $this->withSession(['gb2_kid_id' => $kidA->id])->get('/history?status=approved');
+        $res = $this->withSession(['gb2_kid_id' => $kidA->id])->get('/app/history?filter=chores');
 
         $res->assertOk();
-        $res->assertSee('uploads/a-approved.jpg');
-        $res->assertDontSee('uploads/a-pending.jpg');
-        $res->assertDontSee('uploads/b-approved.jpg');
+        // View renders slot title for base submissions, not proof_path
+        $res->assertSee('Dishes For A');
+        $res->assertDontSee('Trash For B');
     }
 }

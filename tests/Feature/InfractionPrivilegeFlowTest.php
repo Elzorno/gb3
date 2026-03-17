@@ -33,12 +33,17 @@ class InfractionPrivilegeFlowTest extends TestCase
             'sort_order' => 1,
         ]);
 
-        $res = $this->post('/infractions/apply', [
+        $adminSession = ['gb2_admin_logged_in' => true];
+
+        // Ensure admin auth middleware doesn't redirect to setup
+        \DB::table('settings')->insert(['key' => 'admin_password_hash', 'value' => 'test']);
+
+        $res = $this->withSession($adminSession)->post('/admin/infractions/apply', [
             'kid_id' => $kid->id,
             'infraction_def_id' => $def->id,
             'note' => 'first strike',
         ]);
-        $res->assertRedirect('/infractions');
+        $res->assertRedirect(route('admin.infractions'));
 
         $this->assertDatabaseHas('infraction_strikes', [
             'kid_id' => $kid->id,
@@ -79,21 +84,26 @@ class InfractionPrivilegeFlowTest extends TestCase
             'sort_order' => 1,
         ]);
 
-        $this->post('/infractions/apply', [
+        $adminSession = ['gb2_admin_logged_in' => true];
+
+        // Ensure admin auth middleware doesn't redirect to setup
+        \DB::table('settings')->insert(['key' => 'admin_password_hash', 'value' => 'test']);
+
+        $this->withSession($adminSession)->post('/admin/infractions/apply', [
             'kid_id' => $kid->id,
             'infraction_def_id' => $def->id,
-        ])->assertRedirect('/infractions');
+        ])->assertRedirect(route('admin.infractions'));
 
         $eventId = (int)\DB::table('infraction_events')->value('id');
 
-        $res = $this->post('/infractions/review', [
+        $res = $this->withSession($adminSession)->post('/admin/infractions/review', [
             'event_id' => $eventId,
             'action' => 'unlock',
             'keep_minutes' => 0,
             'reset_strike' => '1',
             'review_note' => 'resolved',
         ]);
-        $res->assertRedirect('/infractions/review');
+        $res->assertRedirect(route('admin.infractions.review'));
 
         $this->assertDatabaseHas('infraction_events', [
             'id' => $eventId,

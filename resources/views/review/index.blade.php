@@ -21,7 +21,7 @@
         <p class="ok">{{ session('status') }}</p>
     @endif
 
-    <form method="get" action="{{ route('review.index') }}" style="display:flex; gap:.5rem; flex-wrap:wrap; margin-bottom:.75rem;">
+    <form method="get" action="{{ route('admin.reviews') }}" style="display:flex; gap:.5rem; flex-wrap:wrap; margin-bottom:.75rem;">
         <select name="status">
             <option value="" {{ $status==='' ? 'selected' : '' }}>all status</option>
             <option value="pending" {{ $status==='pending' ? 'selected' : '' }}>pending</option>
@@ -46,7 +46,7 @@
         <div class="item">
             <div><strong>{{ $p->kid?->display_name ?? ('Kid#'.$p->kid_id) }}</strong> · {{ $p->kind }} · {{ $p->submitted_at }}</div>
             <div>slot_id={{ $p->slot_id }} · proof={{ $p->proof_path }}</div>
-            <form method="post" action="{{ route('review.decide') }}" style="margin-top:.45rem; display:flex; gap:.5rem; align-items:center; flex-wrap:wrap;">
+            <form method="post" action="{{ route('admin.reviews.decide') }}" style="margin-top:.45rem; display:flex; gap:.5rem; align-items:center; flex-wrap:wrap;">
                 @csrf
                 <input type="hidden" name="submission_id" value="{{ $p->id }}">
                 <input type="text" name="note" placeholder="Optional note">

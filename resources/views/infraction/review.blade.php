@@ -26,7 +26,7 @@
     @forelse($dueNow as $e)
         <div class="item">
             <div><strong>{{ $e->kid?->display_name }}</strong> · {{ $e->definition?->label }} · review_on {{ $e->review_on }}</div>
-            <form method="post" action="{{ route('infraction.review.decide') }}" class="grid" style="margin-top:.5rem;">
+            <form method="post" action="{{ route('admin.infractions.review.decide') }}" class="grid" style="margin-top:.5rem;">
                 @csrf
                 <input type="hidden" name="event_id" value="{{ $e->id }}">
                 <label>

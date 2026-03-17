@@ -43,4 +43,9 @@ class Submission extends Model
     {
         return $this->belongsTo(ChoreSlot::class, 'slot_id');
     }
+
+    public function bonusInstance(): BelongsTo
+    {
+        return $this->belongsTo(BonusInstance::class, 'bonus_instance_id');
+    }
 }

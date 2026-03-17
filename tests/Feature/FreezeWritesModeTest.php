@@ -30,10 +30,11 @@ class FreezeWritesModeTest extends TestCase
     {
         file_put_contents($this->flagPath, '{"frozen":true}');
 
-        $read = $this->get('/');
+        // GET / now redirects to app.login, which is a read
+        $read = $this->get('/app/login');
         $read->assertOk();
 
-        $write = $this->post('/kid/login', [
+        $write = $this->post('/app/login', [
             'kid_id' => 1,
             'pin' => '123456',
         ]);

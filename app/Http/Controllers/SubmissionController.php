@@ -7,7 +7,6 @@ namespace App\Http\Controllers;
 use App\Domain\Submission\SubmissionService;
 use App\Models\Assignment;
 use App\Models\Kid;
-use App\Models\Slot;
 use Carbon\CarbonImmutable;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
