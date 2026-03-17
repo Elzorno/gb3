@@ -96,6 +96,46 @@
         </div>
     @endif
 
+    {{-- Pending Payout Requests --}}
+    @if($pendingPayouts->isNotEmpty())
+        <div class="card mb-4" style="border-left: 4px solid var(--secondary);">
+            <div class="card-header">
+                <h3 class="card-title">Payout Requests</h3>
+                <a href="{{ route('admin.payouts') }}" class="btn btn-secondary btn-sm">Review All</a>
+            </div>
+            @foreach($pendingPayouts as $payout)
+                <div class="dash-review-item flex justify-between items-center">
+                    <div>
+                        <strong>{{ $payout->kid?->display_name }}</strong> —
+                        @if($payout->requested_cents > 0)
+                            ${{ number_format($payout->requested_cents / 100, 2) }}
+                        @endif
+                        @if($payout->requested_phone_min > 0)
+                            📱 {{ $payout->requested_phone_min }}min
+                        @endif
+                        @if($payout->requested_games_min > 0)
+                            🎮 {{ $payout->requested_games_min }}min
+                        @endif
+                        <span class="text-muted">{{ $payout->requested_at?->diffForHumans() }}</span>
+                    </div>
+                    <div class="flex gap-2">
+                        <form method="POST" action="{{ route('admin.payouts.decide') }}">
+                            @csrf
+                            <input type="hidden" name="payout_id" value="{{ $payout->id }}">
+                            <input type="hidden" name="decision" value="approved">
+                            <button type="submit" class="btn btn-success btn-sm">Approve</button>
+                        </form>
+                    </div>
+                </div>
+            @endforeach
+            @if($pendingPayoutCount > $pendingPayouts->count())
+                <div class="text-muted text-center p-2" style="font-size: 0.875rem;">
+                    + {{ $pendingPayoutCount - $pendingPayouts->count() }} more
+                </div>
+            @endif
+        </div>
+    @endif
+
     {{-- Active Locks Detail --}}
     @if($activeLocks->isNotEmpty())
         <div class="card mb-4">

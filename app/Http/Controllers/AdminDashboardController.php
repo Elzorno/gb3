@@ -6,6 +6,7 @@ namespace App\Http\Controllers;
 
 use App\Models\InfractionEvent;
 use App\Models\Kid;
+use App\Models\PayoutRequest;
 use App\Models\Submission;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -40,6 +41,14 @@ class AdminDashboardController extends Controller
             ->limit(5)
             ->get();
 
+        // Pending payout requests
+        $pendingPayouts = PayoutRequest::with('kid')
+            ->where('status', 'pending')
+            ->orderBy('requested_at')
+            ->limit(5)
+            ->get();
+        $pendingPayoutCount = PayoutRequest::where('status', 'pending')->count();
+
         // Active locks detail per kid
         $activeLocks = $kids->filter(fn($kid) => $kid->is_grounded)->map(function ($kid) {
             $priv = $kid->privileges;
@@ -71,6 +80,8 @@ class AdminDashboardController extends Controller
             'kidsNeedingAttention' => $kidsNeedingAttention,
             'pendingItems' => $pendingItems,
             'dueInfractionReviews' => $dueInfractionReviews,
+            'pendingPayouts' => $pendingPayouts,
+            'pendingPayoutCount' => $pendingPayoutCount,
             'activeLocks' => $activeLocks,
             'isFrozen' => $isFrozen,
             'familyName' => $familyName,

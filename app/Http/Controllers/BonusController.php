@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Http\Controllers;
 
 use App\Domain\Bonus\BonusService;
+use App\Domain\Payout\PayoutService;
 use App\Models\Kid;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -14,6 +15,7 @@ class BonusController extends Controller
 {
     public function __construct(
         private readonly BonusService $bonus,
+        private readonly PayoutService $payout,
     ) {
     }
 
@@ -39,6 +41,12 @@ class BonusController extends Controller
         $bankPhoneMin = $priv->bank_phone_min ?? 0;
         $bankGamesMin = $priv->bank_games_min ?? 0;
 
+        // Get pending payout request, if any
+        $pendingPayout = $kidId > 0 ? $this->payout->getPendingRequest($kidId) : null;
+
+        // Check if kid has any bank balance for payout
+        $hasPayableBalance = $bankCents > 0 || $bankPhoneMin > 0 || $bankGamesMin > 0;
+
         return view('app.bonuses', [
             'kid' => $kid,
             'week' => $week,
@@ -48,6 +56,8 @@ class BonusController extends Controller
             'bankCents' => $bankCents,
             'bankPhoneMin' => $bankPhoneMin,
             'bankGamesMin' => $bankGamesMin,
+            'pendingPayout' => $pendingPayout,
+            'hasPayableBalance' => $hasPayableBalance,
         ]);
     }
 

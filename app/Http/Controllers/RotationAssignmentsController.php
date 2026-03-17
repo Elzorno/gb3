@@ -6,6 +6,7 @@ namespace App\Http\Controllers;
 
 use App\Domain\Rotation\RotationPlanner;
 use App\Models\Assignment;
+use App\Models\InfractionEvent;
 use App\Models\Kid;
 use App\Models\Submission;
 use Carbon\CarbonImmutable;
@@ -57,6 +58,9 @@ class RotationAssignmentsController extends Controller
                 ->all();
         }
 
+        // Get active consequence context for kid-facing display
+        $activeConsequence = $this->getActiveConsequenceContext($kidId);
+
         return view('app.today', [
             'kid' => $kid,
             'date' => $date,
@@ -64,6 +68,102 @@ class RotationAssignmentsController extends Controller
             'assignments' => $assignments,
             'isGrounded' => $isGrounded,
             'rejectionNotes' => $rejectionNotes,
+            'activeConsequence' => $activeConsequence,
         ]);
+    }
+
+    /**
+     * Get active consequence details for kid-facing display.
+     * Returns structured data with calm, concrete language.
+     */
+    private function getActiveConsequenceContext(int $kidId): ?array
+    {
+        // Get the most recent active (unreviewed or recently reviewed) consequence
+        $event = InfractionEvent::with('definition')
+            ->where('kid_id', $kidId)
+            ->whereNull('reviewed_at')
+            ->orderByDesc('ts')
+            ->first();
+
+        if (!$event) {
+            return null;
+        }
+
+        // Parse blocked privileges
+        $blocksJson = $event->blocks_json;
+        $blocks = is_string($blocksJson) ? json_decode($blocksJson, true) : $blocksJson;
+        if (!is_array($blocks)) {
+            $blocks = [];
+        }
+
+        $pausedPrivileges = [];
+        $privilegeLabels = [
+            'phone' => 'Phone',
+            'games' => 'Games',
+            'other' => 'Other screen time',
+        ];
+        foreach (['phone', 'games', 'other'] as $type) {
+            if (($blocks[$type] ?? 0) === 1) {
+                $pausedPrivileges[] = $privilegeLabels[$type];
+            }
+        }
+
+        // Parse computed_until for timing info
+        $computedUntilJson = $event->computed_until_json;
+        $computedUntil = is_string($computedUntilJson) ? json_decode($computedUntilJson, true) : $computedUntilJson;
+        $earliestUntil = null;
+        if (is_array($computedUntil)) {
+            foreach ($computedUntil as $until) {
+                if ($until) {
+                    $dt = CarbonImmutable::parse($until);
+                    if ($earliestUntil === null || $dt->lessThan($earliestUntil)) {
+                        $earliestUntil = $dt;
+                    }
+                }
+            }
+        }
+
+        // Build friendly review timing text
+        $reviewText = null;
+        if ($event->review_on) {
+            $reviewDate = CarbonImmutable::parse($event->review_on);
+            $now = CarbonImmutable::today(config('app.timezone'));
+            
+            if ($reviewDate->isSameDay($now)) {
+                $reviewText = 'Review today';
+            } elseif ($reviewDate->isTomorrow()) {
+                $reviewText = 'Review tomorrow';
+            } else {
+                $reviewText = 'Review on ' . $reviewDate->format('l, M j');
+            }
+        }
+
+        // Build next step / get-back-on-track text from repairs_json if available
+        $nextStepText = null;
+        $def = $event->definition;
+        if ($def && $def->repairs_json) {
+            $repairs = json_decode($def->repairs_json, true);
+            if (is_array($repairs) && !empty($repairs)) {
+                // Take first repair as the suggested next step
+                $firstRepair = $repairs[0] ?? null;
+                if (is_string($firstRepair) && strlen($firstRepair) > 0) {
+                    $nextStepText = $firstRepair;
+                }
+            }
+        }
+
+        // Default calm next-step if no repairs defined
+        if (!$nextStepText) {
+            $nextStepText = 'Keep completing your daily tasks to get back on track.';
+        }
+
+        return [
+            'label' => $def?->label ?? 'Consequence',
+            'pausedPrivileges' => $pausedPrivileges,
+            'reviewText' => $reviewText,
+            'nextStepText' => $nextStepText,
+            'daysApplied' => $event->days_applied,
+            'earliestUntil' => $earliestUntil,
+        ];
     }
 }

@@ -9,6 +9,7 @@ use App\Http\Controllers\HistoryController;
 use App\Http\Controllers\InfractionController;
 use App\Http\Controllers\InfractionReviewController;
 use App\Http\Controllers\KidAuthController;
+use App\Http\Controllers\PayoutController;
 use App\Http\Controllers\PrivilegeController;
 use App\Http\Controllers\ReviewController;
 use App\Http\Controllers\RotationAssignmentsController;
@@ -120,6 +121,10 @@ Route::prefix('admin')->name('admin.')->middleware('admin.auth')->group(function
     Route::post('/definitions/infractions/reorder', [DefinitionController::class, 'reorderInfractions'])->name('definitions.infractions.reorder');
     Route::delete('/definitions/infraction/{infraction}', [DefinitionController::class, 'destroyInfraction'])->name('definitions.infraction.destroy');
     
+    // Payout requests management
+    Route::get('/payouts', [PayoutController::class, 'adminIndex'])->name('payouts');
+    Route::post('/payouts/decide', [PayoutController::class, 'adminDecide'])->name('payouts.decide');
+    
     // Settings
     Route::get('/settings', [SettingsController::class, 'index'])->name('settings');
     Route::post('/settings', [SettingsController::class, 'update'])->name('settings.update');
@@ -150,6 +155,7 @@ Route::prefix('app')->name('app.')->middleware('kid.auth')->group(function () {
     Route::get('/bonuses', [BonusController::class, 'index'])->name('bonuses');
     Route::post('/bonuses/claim', [BonusController::class, 'claim'])->name('bonuses.claim');
     Route::post('/bonuses/submit', [BonusController::class, 'submit'])->name('bonuses.submit');
+    Route::post('/bonuses/payout', [PayoutController::class, 'request'])->name('bonuses.payout');
     
     // History / ledger
     Route::get('/history', [HistoryController::class, 'index'])->name('history');

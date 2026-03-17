@@ -7,31 +7,64 @@
 @endsection
 
 @section('content')
-    {{-- Status banner if grounded --}}
+    {{-- Consequence details banner (shown when grounded) --}}
     @if($isGrounded)
         @php $priv = $kid?->privileges; @endphp
-        <div class="status-banner status-banner-grounded mb-4">
-            <div class="status-banner-icon" aria-hidden="true">⏳</div>
-            <div class="status-banner-content">
-                <div class="status-banner-title">Some privileges are paused</div>
-                <p class="status-banner-text mb-1">
+        <div class="consequence-banner mb-4">
+            <div class="consequence-header">
+                <span class="consequence-icon" aria-hidden="true">⏳</span>
+                <h2 class="consequence-title">Current Consequence</h2>
+            </div>
+            
+            @if($activeConsequence)
+                {{-- Named consequence with details --}}
+                <div class="consequence-name">{{ $activeConsequence['label'] }}</div>
+                
+                @if(!empty($activeConsequence['pausedPrivileges']))
+                    <div class="consequence-section">
+                        <div class="consequence-section-label">What is paused</div>
+                        <div class="consequence-paused-list">
+                            @foreach($activeConsequence['pausedPrivileges'] as $privilege)
+                                <span class="consequence-paused-item">{{ $privilege }}</span>
+                            @endforeach
+                        </div>
+                    </div>
+                @endif
+                
+                @if($activeConsequence['reviewText'])
+                    <div class="consequence-section">
+                        <div class="consequence-section-label">Next review</div>
+                        <div class="consequence-review">{{ $activeConsequence['reviewText'] }}</div>
+                    </div>
+                @endif
+                
+                <div class="consequence-section consequence-nextstep">
+                    <div class="consequence-section-label">How to get back on track</div>
+                    <p class="consequence-nextstep-text">{{ $activeConsequence['nextStepText'] }}</p>
+                </div>
+            @else
+                {{-- Fallback: show privilege lock details without specific consequence info --}}
+                <p class="consequence-text mb-2">
                     Keep completing your tasks — each day helps you get back on track.
                 </p>
                 @if($priv)
-                    <div class="lock-details">
-                        @foreach(['phone' => '📱 Phone', 'games' => '🎮 Games', 'other' => '📺 Other'] as $type => $label)
-                            @if($priv->{$type . '_locked'})
-                                <span class="lock-detail">
-                                    {{ $label }}
-                                    @if($priv->{$type . '_locked_until'})
-                                        — review {{ $priv->{$type . '_locked_until'}->diffForHumans() }}
-                                    @endif
-                                </span>
-                            @endif
-                        @endforeach
+                    <div class="consequence-section">
+                        <div class="consequence-section-label">What is paused</div>
+                        <div class="consequence-paused-list">
+                            @foreach(['phone' => 'Phone', 'games' => 'Games', 'other' => 'Other screen time'] as $type => $label)
+                                @if($priv->{$type . '_locked'})
+                                    <span class="consequence-paused-item">
+                                        {{ $label }}
+                                        @if($priv->{$type . '_locked_until'})
+                                            — review {{ $priv->{$type . '_locked_until'}->diffForHumans() }}
+                                        @endif
+                                    </span>
+                                @endif
+                            @endforeach
+                        </div>
                     </div>
                 @endif
-            </div>
+            @endif
         </div>
     @endif
 
@@ -162,46 +195,92 @@
 
 @push('head')
 <style>
-    /* Status banner for grounding */
-    .status-banner {
-        display: flex;
-        align-items: flex-start;
-        gap: 1rem;
+    /* Consequence banner - calm, informative display */
+    .consequence-banner {
         padding: 1rem;
         border-radius: var(--border-radius-lg);
-        background: color-mix(in srgb, var(--attention) 10%, white);
+        background: color-mix(in srgb, var(--attention) 8%, white);
         border: 1px solid var(--attention);
     }
 
-    .status-banner-icon {
-        font-size: 1.5rem;
-        flex-shrink: 0;
+    .consequence-header {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        margin-bottom: 0.75rem;
     }
 
-    .status-banner-title {
+    .consequence-icon {
+        font-size: 1.25rem;
+    }
+
+    .consequence-title {
+        font-size: 1rem;
         font-weight: 600;
         color: var(--attention-dark);
+        margin: 0;
+    }
+
+    .consequence-name {
+        font-weight: 700;
+        font-size: 1.125rem;
+        color: var(--text-primary);
+        margin-bottom: 0.75rem;
+    }
+
+    .consequence-section {
+        margin-bottom: 0.75rem;
+    }
+
+    .consequence-section:last-child {
+        margin-bottom: 0;
+    }
+
+    .consequence-section-label {
+        font-size: 0.75rem;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+        color: var(--text-muted);
         margin-bottom: 0.25rem;
     }
 
-    .status-banner-text {
-        color: var(--text-secondary);
-        font-size: 0.9375rem;
-    }
-
-    .lock-details {
+    .consequence-paused-list {
         display: flex;
         flex-wrap: wrap;
         gap: 0.5rem;
-        margin-top: 0.25rem;
     }
 
-    .lock-detail {
-        font-size: 0.8125rem;
+    .consequence-paused-item {
+        font-size: 0.875rem;
         color: var(--attention-dark);
-        background: rgba(255,255,255,0.5);
-        padding: 0.125rem 0.5rem;
+        background: rgba(255,255,255,0.6);
+        padding: 0.25rem 0.5rem;
         border-radius: var(--border-radius);
+    }
+
+    .consequence-review {
+        font-size: 0.9375rem;
+        color: var(--text-primary);
+        font-weight: 500;
+    }
+
+    .consequence-nextstep {
+        padding: 0.75rem;
+        background: rgba(255,255,255,0.5);
+        border-radius: var(--border-radius);
+    }
+
+    .consequence-nextstep-text {
+        margin: 0;
+        font-size: 0.9375rem;
+        color: var(--text-secondary);
+        line-height: 1.5;
+    }
+
+    .consequence-text {
+        color: var(--text-secondary);
+        font-size: 0.9375rem;
     }
 
     /* Progress ring */

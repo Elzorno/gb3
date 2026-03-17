@@ -21,6 +21,34 @@
                 @endif
             </div>
         @endif
+        
+        {{-- Payout request section --}}
+        <div class="payout-section mt-3">
+            @if($pendingPayout)
+                <div class="payout-pending">
+                    <span class="payout-status-badge">⏳ Payout requested</span>
+                    <div class="payout-details">
+                        @if($pendingPayout->requested_cents > 0)
+                            <span>${{ number_format($pendingPayout->requested_cents / 100, 2) }}</span>
+                        @endif
+                        @if($pendingPayout->requested_phone_min > 0)
+                            <span>📱 {{ $pendingPayout->requested_phone_min }} min</span>
+                        @endif
+                        @if($pendingPayout->requested_games_min > 0)
+                            <span>🎮 {{ $pendingPayout->requested_games_min }} min</span>
+                        @endif
+                    </div>
+                    <div class="payout-waiting">Waiting for review</div>
+                </div>
+            @elseif($hasPayableBalance)
+                <form method="POST" action="{{ route('app.bonuses.payout') }}" class="payout-form">
+                    @csrf
+                    <button type="submit" class="payout-btn">
+                        Request Payout
+                    </button>
+                </form>
+            @endif
+        </div>
     </div>
 
     {{-- My active bonuses --}}
@@ -354,6 +382,60 @@
 
     .encouragement p {
         color: var(--text-secondary);
+    }
+
+    /* Payout section */
+    .payout-section {
+        border-top: 1px solid rgba(255,255,255,0.2);
+        padding-top: 0.75rem;
+    }
+
+    .payout-pending {
+        padding: 0.5rem;
+        background: rgba(255,255,255,0.15);
+        border-radius: var(--border-radius);
+    }
+
+    .payout-status-badge {
+        display: inline-block;
+        font-size: 0.875rem;
+        font-weight: 600;
+    }
+
+    .payout-details {
+        display: flex;
+        justify-content: center;
+        gap: 0.75rem;
+        margin-top: 0.25rem;
+        font-size: 0.8125rem;
+        opacity: 0.9;
+    }
+
+    .payout-waiting {
+        font-size: 0.75rem;
+        margin-top: 0.25rem;
+        opacity: 0.75;
+    }
+
+    .payout-form {
+        margin: 0;
+    }
+
+    .payout-btn {
+        padding: 0.5rem 1.25rem;
+        background: rgba(255,255,255,0.2);
+        color: white;
+        border: 1px solid rgba(255,255,255,0.3);
+        border-radius: var(--border-radius);
+        font-weight: 600;
+        font-size: 0.9375rem;
+        cursor: pointer;
+        transition: all 0.2s ease;
+    }
+
+    .payout-btn:hover {
+        background: rgba(255,255,255,0.3);
+        border-color: rgba(255,255,255,0.5);
     }
 </style>
 @endpush
