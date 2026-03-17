@@ -124,7 +124,12 @@
 
                             @if($submission->status !== 'pending' && $submission->review_note)
                                 <div class="review-note mt-2 p-2" style="background: var(--gray-100); border-radius: var(--border-radius);">
-                                    <strong>Note:</strong> {{ $submission->review_note }}
+                                    {{ $submission->review_note }}
+                                </div>
+                            @endif
+                            @if($submission->reviewed_at)
+                                <div class="text-muted mt-1" style="font-size: 0.8rem;">
+                                    Reviewed {{ $submission->reviewed_at->diffForHumans() }}
                                 </div>
                             @endif
                         </div>
@@ -148,6 +153,16 @@
                                 >
                                     Reject
                                 </button>
+                            </div>
+                        @elseif($submission->reviewed_at && $submission->reviewed_at->diffInMinutes(now()) <= 5)
+                            <div class="review-actions flex flex-col gap-2" style="flex: 0 0 auto;">
+                                <form method="POST" action="{{ route('admin.reviews.undo') }}" class="mb-0">
+                                    @csrf
+                                    <input type="hidden" name="submission_id" value="{{ $submission->id }}">
+                                    <button type="submit" class="btn btn-secondary btn-sm" title="Revert to pending ({{ 5 - (int)$submission->reviewed_at->diffInMinutes(now()) }}m left)">
+                                        Undo
+                                    </button>
+                                </form>
                             </div>
                         @endif
                     </div>
@@ -174,17 +189,27 @@
                 @csrf
                 <input type="hidden" name="submission_id" id="reject-submission-id" value="">
                 <input type="hidden" name="decision" value="rejected">
+
+                <div class="form-group mb-3">
+                    <label class="form-label">Quick reason (tap one):</label>
+                    <div class="reject-templates">
+                        <button type="button" class="reject-tpl" data-text="Photo was unclear or blurry — please retake and resubmit.">Photo unclear</button>
+                        <button type="button" class="reject-tpl" data-text="Looks like one more step is needed — please finish up.">Needs one more step</button>
+                        <button type="button" class="reject-tpl" data-text="Please redo this task and resubmit when it's complete.">Please redo</button>
+                        <button type="button" class="reject-tpl" data-text="This doesn't match what was assigned — double-check and resubmit.">Wrong task</button>
+                    </div>
+                </div>
                 
                 <div class="form-group">
-                    <label for="reject-note" class="form-label">Note (optional)</label>
+                    <label for="reject-note" class="form-label">Note</label>
                     <textarea 
                         name="note" 
                         id="reject-note" 
                         class="form-input"
                         rows="3"
-                        placeholder="Explain why this was rejected..."
+                        placeholder="Keep it neutral and clear..."
                     ></textarea>
-                    <p class="form-hint">This note will be visible to the child.</p>
+                    <p class="form-hint">This note will be visible to the child. Keep it neutral and encouraging.</p>
                 </div>
 
                 <div class="flex gap-3 justify-end">
@@ -237,6 +262,29 @@
             background: var(--primary-light);
             color: var(--primary-dark);
         }
+
+        .reject-templates {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.5rem;
+        }
+        .reject-tpl {
+            padding: 0.35rem 0.75rem;
+            border: 1px solid var(--border-color);
+            border-radius: 1rem;
+            background: var(--bg-card);
+            cursor: pointer;
+            font-size: 0.8rem;
+            transition: all 0.15s ease;
+        }
+        .reject-tpl:hover {
+            border-color: var(--primary);
+            background: var(--primary-light);
+        }
+        .reject-tpl.active {
+            border-color: var(--attention);
+            background: var(--attention-light);
+        }
     </style>
 
     <script>
@@ -244,12 +292,22 @@
             document.getElementById('reject-submission-id').value = submissionId;
             document.getElementById('reject-kid-name').textContent = kidName;
             document.getElementById('reject-note').value = '';
+            document.querySelectorAll('.reject-tpl').forEach(b => b.classList.remove('active'));
             document.getElementById('reject-modal').style.display = 'flex';
         }
 
         function hideRejectModal() {
             document.getElementById('reject-modal').style.display = 'none';
         }
+
+        // Wire up reject template buttons
+        document.querySelectorAll('.reject-tpl').forEach(function(btn) {
+            btn.addEventListener('click', function() {
+                document.querySelectorAll('.reject-tpl').forEach(b => b.classList.remove('active'));
+                this.classList.add('active');
+                document.getElementById('reject-note').value = this.dataset.text;
+            });
+        });
 
         // Close modal on escape key
         document.addEventListener('keydown', function(e) {

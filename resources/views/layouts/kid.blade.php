@@ -37,21 +37,21 @@
 </main>
 
 {{-- Bottom navigation for kids - big, easy-to-tap targets --}}
-<nav class="bottom-nav" aria-label="Main navigation">
-    <a href="{{ route('app.today') }}" class="bottom-nav-item @if(request()->routeIs('app.today')) active @endif">
-        <span class="bottom-nav-icon">📋</span>
-        <span>Today</span>
+<nav class="bottom-nav" aria-label="Kid navigation">
+    <a href="{{ route('app.today') }}" class="bottom-nav-item @if(request()->routeIs('app.today')) active @endif" aria-current="{{ request()->routeIs('app.today') ? 'page' : 'false' }}">
+        <span class="bottom-nav-icon" aria-hidden="true">📋</span>
+        <span>My Day</span>
     </a>
-    <a href="{{ route('app.rules') }}" class="bottom-nav-item @if(request()->routeIs('app.rules')) active @endif">
-        <span class="bottom-nav-icon">✓</span>
-        <span>Rules</span>
+    <a href="{{ route('app.rules') }}" class="bottom-nav-item @if(request()->routeIs('app.rules')) active @endif" aria-current="{{ request()->routeIs('app.rules') ? 'page' : 'false' }}">
+        <span class="bottom-nav-icon" aria-hidden="true">📅</span>
+        <span>My Week</span>
     </a>
-    <a href="{{ route('app.bonuses') }}" class="bottom-nav-item @if(request()->routeIs('app.bonuses')) active @endif">
-        <span class="bottom-nav-icon">⭐</span>
+    <a href="{{ route('app.bonuses') }}" class="bottom-nav-item @if(request()->routeIs('app.bonuses')) active @endif" aria-current="{{ request()->routeIs('app.bonuses') ? 'page' : 'false' }}">
+        <span class="bottom-nav-icon" aria-hidden="true">⭐</span>
         <span>Bonuses</span>
     </a>
-    <a href="{{ route('app.history') }}" class="bottom-nav-item @if(request()->routeIs('app.history')) active @endif">
-        <span class="bottom-nav-icon">📊</span>
+    <a href="{{ route('app.history') }}" class="bottom-nav-item @if(request()->routeIs('app.history')) active @endif" aria-current="{{ request()->routeIs('app.history') ? 'page' : 'false' }}">
+        <span class="bottom-nav-icon" aria-hidden="true">📊</span>
         <span>History</span>
     </a>
 </nav>

@@ -91,6 +91,7 @@ Route::prefix('admin')->name('admin.')->middleware('admin.auth')->group(function
     // Reviews hub
     Route::get('/reviews', [ReviewController::class, 'index'])->name('reviews');
     Route::post('/reviews/decide', [ReviewController::class, 'decide'])->name('reviews.decide');
+    Route::post('/reviews/undo', [ReviewController::class, 'undo'])->name('reviews.undo');
     
     // Infraction management
     Route::get('/infractions', [InfractionController::class, 'index'])->name('infractions');

@@ -24,6 +24,7 @@ class Privilege extends Model
         'bank_phone_min',
         'bank_games_min',
         'bank_other_min',
+        'bank_cents',
         'phone_locked_until',
         'games_locked_until',
         'other_locked_until',

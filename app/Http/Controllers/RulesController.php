@@ -97,12 +97,16 @@ class RulesController extends Controller
             }
         }
         
+        $kid = Kid::with('privileges')->find($kidId);
+        $isGrounded = $kid?->is_grounded ?? false;
+
         return view('app.rules', [
             'currentKidId' => $kidId,
             'kids' => $kids,
             'weekDays' => $weekDays,
             'schedule' => $schedule,
             'today' => $today->format('Y-m-d'),
+            'isGrounded' => $isGrounded,
         ]);
     }
 }

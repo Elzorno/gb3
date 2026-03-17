@@ -9,13 +9,28 @@
 @section('content')
     {{-- Status banner if grounded --}}
     @if($isGrounded)
+        @php $priv = $kid?->privileges; @endphp
         <div class="status-banner status-banner-grounded mb-4">
-            <div class="status-banner-icon">⏳</div>
+            <div class="status-banner-icon" aria-hidden="true">⏳</div>
             <div class="status-banner-content">
-                <div class="status-banner-title">On Consequence</div>
-                <p class="status-banner-text mb-0">
-                    Complete your tasks and show good behavior to work toward getting back on track.
+                <div class="status-banner-title">Some privileges are paused</div>
+                <p class="status-banner-text mb-1">
+                    Keep completing your tasks — each day helps you get back on track.
                 </p>
+                @if($priv)
+                    <div class="lock-details">
+                        @foreach(['phone' => '📱 Phone', 'games' => '🎮 Games', 'other' => '📺 Other'] as $type => $label)
+                            @if($priv->{$type . '_locked'})
+                                <span class="lock-detail">
+                                    {{ $label }}
+                                    @if($priv->{$type . '_locked_until'})
+                                        — review {{ $priv->{$type . '_locked_until'}->diffForHumans() }}
+                                    @endif
+                                </span>
+                            @endif
+                        @endforeach
+                    </div>
+                @endif
             </div>
         </div>
     @endif
@@ -38,7 +53,7 @@
             {{-- Progress ring --}}
             @php
                 $total = $assignments->count();
-                $completed = $assignments->whereIn('status', ['approved', 'completed'])->count();
+                $completed = $assignments->where('status', 'approved')->count();
                 $pending = $assignments->where('status', 'pending')->count();
                 $percent = $total > 0 ? round(($completed / $total) * 100) : 0;
                 $circumference = 2 * 3.14159 * 45;
@@ -81,7 +96,7 @@
             <ul class="checklist">
                 @foreach($assignments as $a)
                     @php
-                        $isComplete = in_array($a->status, ['approved', 'completed']);
+                        $isComplete = $a->status === 'approved';
                         $isPending = $a->status === 'pending';
                         $isRejected = $a->status === 'rejected';
                     @endphp
@@ -99,13 +114,16 @@
                             <div class="checklist-title">{{ $a->slot?->title ?? 'Task' }}</div>
                             <div class="checklist-meta">
                                 @if($isComplete)
-                                    <span class="text-success">Approved!</span>
+                                    <span class="text-success">Done — nice work!</span>
                                 @elseif($isPending)
                                     <span class="text-warning">Waiting for review</span>
                                 @elseif($isRejected)
-                                    <span class="text-attention">Needs to be redone</span>
+                                    <span class="text-attention">Try again</span>
+                                    @if(!empty($rejectionNotes[$a->slot_id]))
+                                        <div class="rejection-hint">{{ $rejectionNotes[$a->slot_id] }}</div>
+                                    @endif
                                 @else
-                                    <span>Not started</span>
+                                    <span>Ready to do</span>
                                 @endif
                             </div>
                         </div>
@@ -122,7 +140,7 @@
 
         {{-- Submit proof button (prominent CTA) --}}
         @php
-            $incomplete = $assignments->whereNotIn('status', ['approved', 'completed', 'pending'])->count();
+            $incomplete = $assignments->whereNotIn('status', ['approved', 'pending'])->count();
         @endphp
         @if($incomplete > 0)
             <a href="{{ route('app.submit') }}" class="big-action-btn">
@@ -169,6 +187,21 @@
     .status-banner-text {
         color: var(--text-secondary);
         font-size: 0.9375rem;
+    }
+
+    .lock-details {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.5rem;
+        margin-top: 0.25rem;
+    }
+
+    .lock-detail {
+        font-size: 0.8125rem;
+        color: var(--attention-dark);
+        background: rgba(255,255,255,0.5);
+        padding: 0.125rem 0.5rem;
+        border-radius: var(--border-radius);
     }
 
     /* Progress ring */
@@ -291,6 +324,15 @@
     .text-success { color: var(--success); }
     .text-warning { color: var(--warning-dark); }
     .text-attention { color: var(--attention); }
+
+    .rejection-hint {
+        margin-top: 0.25rem;
+        padding: 0.25rem 0.5rem;
+        background: color-mix(in srgb, var(--attention) 8%, white);
+        border-radius: var(--border-radius);
+        font-size: 0.8125rem;
+        color: var(--text-secondary);
+    }
 
     /* Big action button */
     .big-action-btn {

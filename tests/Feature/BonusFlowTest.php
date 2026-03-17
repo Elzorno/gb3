@@ -8,6 +8,8 @@ use App\Models\BonusDef;
 use App\Models\BonusInstance;
 use App\Models\Kid;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\Storage;
 use Tests\TestCase;
 
 class BonusFlowTest extends TestCase
@@ -48,9 +50,11 @@ class BonusFlowTest extends TestCase
             'claimed_by_kid_id' => $kid->id,
         ]);
 
+        Storage::fake('public');
+
         $submitRes = $this->withSession($kidSession)->post('/app/bonuses/submit', [
             'instance_id' => $inst->id,
-            'proof_path' => 'uploads/NO_PHOTO',
+            'photo' => UploadedFile::fake()->image('bonus_proof.jpg'),
         ]);
         $submitRes->assertRedirect(route('app.bonuses'));
 

@@ -7,6 +7,7 @@ namespace App\Http\Middleware;
 use App\Domain\Auth\AdminSessionService;
 use Closure;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Symfony\Component\HttpFoundation\Response;
 
 class AdminAuth
@@ -36,6 +37,10 @@ class AdminAuth
             
             return redirect()->route('admin.login');
         }
+
+        // Share family name with all admin views
+        $familyName = DB::table('settings')->where('key', 'family_name')->value('value') ?? 'Family';
+        view()->share('familyName', $familyName);
 
         return $next($request);
     }

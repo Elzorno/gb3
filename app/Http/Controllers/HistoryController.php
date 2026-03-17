@@ -6,6 +6,7 @@ namespace App\Http\Controllers;
 
 use App\Models\InfractionEvent;
 use App\Models\Kid;
+use App\Models\LedgerEntry;
 use App\Models\Submission;
 use Carbon\CarbonImmutable;
 use Illuminate\Http\RedirectResponse;
@@ -21,8 +22,8 @@ class HistoryController extends Controller
             return redirect()->route('app.login')->with('error', 'Please log in first.');
         }
 
-        $kid = Kid::find($kidId);
-        $filter = (string)$request->query('filter', 'all'); // all, chores, bonuses
+        $kid = Kid::with('privileges')->find($kidId);
+        $filter = (string)$request->query('filter', 'all'); // all, chores, bonuses, rewards
         $perPage = 15;
 
         $q = Submission::query()
@@ -54,11 +55,20 @@ class HistoryController extends Controller
                 ->count(),
         ];
 
+        // Recent ledger entries
+        $ledger = LedgerEntry::query()
+            ->where('kid_id', $kidId)
+            ->orderByDesc('created_at')
+            ->orderByDesc('id')
+            ->limit(20)
+            ->get();
+
         return view('app.history', [
             'kid' => $kid,
             'submissions' => $submissions,
             'filter' => $filter,
             'weekStats' => $weekStats,
+            'ledger' => $ledger,
         ]);
     }
 }

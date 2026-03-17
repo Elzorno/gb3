@@ -70,4 +70,24 @@ class ReviewController extends Controller
 
         return redirect()->route('admin.reviews')->with('status', 'Review decision saved.');
     }
+
+    public function undo(Request $request): RedirectResponse
+    {
+        $v = $request->validate([
+            'submission_id' => ['required', 'integer', 'min:1'],
+        ]);
+
+        $sub = Submission::findOrFail($v['submission_id']);
+
+        // Only allow undo within 5 minutes of the review decision
+        if (!$sub->reviewed_at || $sub->reviewed_at->diffInMinutes(now()) > 5) {
+            return redirect()->route('admin.reviews')
+                ->with('status', 'Undo window has expired (5 minutes).');
+        }
+
+        $this->service->undoReview((int)$v['submission_id']);
+
+        return redirect()->route('admin.reviews')
+            ->with('status', "Reverted decision for submission #{$sub->id} back to pending.");
+    }
 }

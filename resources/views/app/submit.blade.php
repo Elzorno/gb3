@@ -52,7 +52,7 @@
                             <div class="task-option-content">
                                 <div class="task-option-title">{{ $a->slot?->title ?? 'Task' }}</div>
                                 @if($a->status === 'rejected')
-                                    <div class="task-option-badge badge-attention">Needs redo</div>
+                                    <div class="task-option-badge badge-attention">Try again</div>
                                 @else
                                     <div class="task-option-badge">Tap to submit</div>
                                 @endif
@@ -76,9 +76,9 @@
                 <div class="status-banner status-banner-attention mb-3">
                     <div class="status-banner-icon">↩</div>
                     <div class="status-banner-content">
-                        <div class="status-banner-title">Redo Requested</div>
+                        <div class="status-banner-title">Try Again</div>
                         <p class="status-banner-text mb-0">
-                            Please complete this task again and submit a new photo.
+                            Complete this task and submit a new photo when ready.
                         </p>
                     </div>
                 </div>

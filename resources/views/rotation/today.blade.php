@@ -8,7 +8,7 @@
     {{-- Status banner if grounded --}}
     @if(isset($currentKid) && ($currentKid->is_grounded ?? false))
         <div class="status-banner status-banner-grounded">
-            <div class="status-banner-title">On Consequence</div>
+            <div class="status-banner-title">Some privileges are paused</div>
             <p class="status-banner-text">
                 Complete your tasks to work toward getting back on track.
             </p>
@@ -34,7 +34,7 @@
             {{-- Progress ring --}}
             @php
                 $total = $assignments->count();
-                $completed = $assignments->where('status', 'completed')->count();
+                $completed = $assignments->where('status', 'approved')->count();
                 $percent = $total > 0 ? round(($completed / $total) * 100) : 0;
                 $circumference = 2 * 3.14159 * 45;
                 $dashOffset = $circumference - ($circumference * $percent / 100);
@@ -72,13 +72,13 @@
             
             <ul class="checklist">
                 @foreach($assignments as $a)
-                    <li class="checklist-item {{ $a->status === 'completed' ? 'completed' : '' }}">
+                    <li class="checklist-item {{ $a->status === 'approved' ? 'completed' : '' }}">
                         <div class="checklist-checkbox"></div>
                         <div class="checklist-content">
                             <div class="checklist-title">{{ $a->slot?->title ?? 'Task' }}</div>
                             <div class="checklist-meta">
-                                @if($a->status === 'completed')
-                                    Completed
+                                @if($a->status === 'approved')
+                                    Done — nice work!
                                 @elseif($a->status === 'pending')
                                     Waiting for review
                                 @else
@@ -92,7 +92,7 @@
         </div>
 
         {{-- Submit proof button --}}
-        @if($assignments->where('status', '!=', 'completed')->count() > 0)
+        @if($assignments->where('status', '!=', 'approved')->count() > 0)
             <a href="{{ route('app.submit') }}" class="big-action-btn">
                 Submit Proof
                 <span class="big-action-btn-sub">Take a photo showing your completed task</span>

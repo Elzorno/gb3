@@ -6,7 +6,6 @@ namespace App\Http\Controllers;
 
 use App\Domain\Bonus\BonusService;
 use App\Models\Kid;
-use App\Models\Submission;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\View\View;
@@ -21,7 +20,7 @@ class BonusController extends Controller
     public function index(Request $request): View
     {
         $kidId = (int)$request->session()->get('gb2_kid_id', 0);
-        $kid = Kid::find($kidId);
+        $kid = Kid::with('privileges')->find($kidId);
         $week = $this->bonus->weekStart();
         $instances = $this->bonus->listWeek($week);
 
@@ -34,14 +33,11 @@ class BonusController extends Controller
             $i->claimed_by_kid_id === $kidId && $i->status === 'approved'
         );
 
-        // Calculate earnings for this week
-        $weekEarnings = Submission::where('kid_id', $kidId)
-            ->where('kind', 'bonus')
-            ->where('week_start', $week)
-            ->where('status', 'approved')
-            ->with('bonusInstance.definition')
-            ->get()
-            ->sum(fn($s) => $s->bonusInstance?->definition?->reward_cents ?? 0);
+        // Get actual bank balances
+        $priv = $kid?->privileges;
+        $bankCents = $priv->bank_cents ?? 0;
+        $bankPhoneMin = $priv->bank_phone_min ?? 0;
+        $bankGamesMin = $priv->bank_games_min ?? 0;
 
         return view('app.bonuses', [
             'kid' => $kid,
@@ -49,7 +45,9 @@ class BonusController extends Controller
             'available' => $available,
             'myActive' => $myActive,
             'myCompleted' => $myCompleted,
-            'weekEarnings' => $weekEarnings,
+            'bankCents' => $bankCents,
+            'bankPhoneMin' => $bankPhoneMin,
+            'bankGamesMin' => $bankGamesMin,
         ]);
     }
 
@@ -81,11 +79,24 @@ class BonusController extends Controller
 
         $v = $request->validate([
             'instance_id' => ['required', 'integer', 'min:1'],
-            'proof_path' => ['required', 'string', 'max:255'],
+            'photo' => ['required', 'image', 'mimes:jpg,jpeg,png,gif,webp,heic,heif', 'max:10240'],
         ]);
 
+        $file = $request->file('photo');
+        $ext = in_array($file->getClientOriginalExtension(), ['jpg','jpeg','png','gif','webp','heic','heif'], true)
+            ? $file->getClientOriginalExtension()
+            : 'jpg';
+        $filename = sprintf(
+            'bonus_%s_%d_%d.%s',
+            now()->format('Y-m-d'),
+            $kidId,
+            $v['instance_id'],
+            $ext
+        );
+        $path = $file->storeAs('uploads/proofs', $filename, 'public');
+
         try {
-            $this->bonus->submitProof((int)$v['instance_id'], $kidId, (string)$v['proof_path']);
+            $this->bonus->submitProof((int)$v['instance_id'], $kidId, $path);
             return redirect()->route('app.bonuses')->with('status', 'Proof submitted! Waiting for review.');
         } catch (\RuntimeException $e) {
             return redirect()->route('app.bonuses')->with('error', 'Could not submit proof for this bonus.');

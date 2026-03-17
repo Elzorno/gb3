@@ -5,6 +5,15 @@
 @section('header-title', $familyName . ' Dashboard')
 
 @section('content')
+    {{-- Freeze Banner --}}
+    @if($isFrozen)
+        <div class="freeze-banner mb-4">
+            <strong>Writes are frozen.</strong>
+            All create, update, and delete actions are blocked until the freeze is lifted.
+            Contact the system administrator or remove the freeze flag file.
+        </div>
+    @endif
+
     {{-- Quick Stats --}}
     <div class="stats-grid">
         <div class="stat-card">
@@ -12,12 +21,12 @@
             <div class="stat-label">Kids</div>
         </div>
         
-        <div class="stat-card">
+        <a href="{{ route('admin.reviews') }}" class="stat-card stat-card-link" style="{{ $pendingReviews > 0 ? 'border:1px solid var(--attention);background:var(--attention-light);' : '' }}">
             <div class="stat-value" style="color: {{ $pendingReviews > 0 ? 'var(--attention)' : 'var(--success)' }}">
                 {{ $pendingReviews }}
             </div>
             <div class="stat-label">Pending Reviews</div>
-        </div>
+        </a>
         
         <div class="stat-card">
             <div class="stat-value">{{ $todaySubmissions }}</div>
@@ -27,10 +36,90 @@
         @if($kidsNeedingAttention > 0)
         <div class="stat-card" style="background-color: var(--attention-light); border: 1px solid var(--attention);">
             <div class="stat-value" style="color: var(--attention-dark);">{{ $kidsNeedingAttention }}</div>
-            <div class="stat-label">Needs Attention</div>
+            <div class="stat-label">Privileges Paused</div>
         </div>
         @endif
     </div>
+
+    {{-- Due Infraction Reviews --}}
+    @if($dueInfractionReviews->isNotEmpty())
+        <div class="card mb-4" style="border-left: 4px solid var(--primary);">
+            <div class="card-header">
+                <h3 class="card-title">Consequence Reviews Due</h3>
+                <a href="{{ route('admin.infractions.review') }}" class="btn btn-primary btn-sm">Review All</a>
+            </div>
+            @foreach($dueInfractionReviews as $evt)
+                <div class="dash-review-item">
+                    <strong>{{ $evt->kid?->display_name }}</strong> —
+                    {{ $evt->definition?->label }}
+                    <span class="text-muted">(due {{ $evt->review_on }})</span>
+                </div>
+            @endforeach
+        </div>
+    @endif
+
+    {{-- Pending Submissions (quick inline view) --}}
+    @if($pendingItems->isNotEmpty())
+        <div class="card mb-4" style="border-left: 4px solid var(--attention);">
+            <div class="card-header">
+                <h3 class="card-title">Waiting for Review</h3>
+                <a href="{{ route('admin.reviews') }}" class="btn btn-attention btn-sm">Review All</a>
+            </div>
+            @foreach($pendingItems as $sub)
+                <div class="dash-review-item flex justify-between items-center">
+                    <div>
+                        <strong>{{ $sub->kid?->display_name }}</strong> —
+                        @if($sub->kind === 'base' && $sub->slot)
+                            {{ $sub->slot->title }}
+                        @elseif($sub->kind === 'bonus')
+                            Bonus task
+                        @else
+                            Submission
+                        @endif
+                        <span class="text-muted">{{ $sub->submitted_at?->diffForHumans() }}</span>
+                    </div>
+                    <div class="flex gap-2">
+                        <form method="POST" action="{{ route('admin.reviews.decide') }}">
+                            @csrf
+                            <input type="hidden" name="submission_id" value="{{ $sub->id }}">
+                            <input type="hidden" name="decision" value="approved">
+                            <button type="submit" class="btn btn-success btn-sm">Approve</button>
+                        </form>
+                    </div>
+                </div>
+            @endforeach
+            @if($pendingReviews > $pendingItems->count())
+                <div class="text-muted text-center p-2" style="font-size: 0.875rem;">
+                    + {{ $pendingReviews - $pendingItems->count() }} more
+                </div>
+            @endif
+        </div>
+    @endif
+
+    {{-- Active Locks Detail --}}
+    @if($activeLocks->isNotEmpty())
+        <div class="card mb-4">
+            <div class="card-header">
+                <h3 class="card-title">Active Privilege Pauses</h3>
+                <a href="{{ route('admin.privileges') }}" class="btn btn-secondary btn-sm">Manage</a>
+            </div>
+            @foreach($activeLocks as $item)
+                <div class="dash-review-item">
+                    <strong>{{ $item['kid']->display_name }}</strong>
+                    <div class="lock-badges mt-1">
+                        @foreach($item['locks'] as $lock)
+                            <span class="badge badge-attention">
+                                {{ $lock['label'] }}
+                                @if($lock['until'])
+                                    — until {{ $lock['until']->format('M j g:ia') }}
+                                @endif
+                            </span>
+                        @endforeach
+                    </div>
+                </div>
+            @endforeach
+        </div>
+    @endif
 
     {{-- Kids Overview --}}
     <div class="card">
@@ -65,9 +154,9 @@
                                 </td>
                                 <td>
                                     @if($kid->is_grounded ?? false)
-                                        <span class="badge badge-attention">On Consequence</span>
+                                        <span class="badge badge-attention">Privileges paused</span>
                                     @else
-                                        <span class="badge badge-success">Good Standing</span>
+                                        <span class="badge badge-success">Good standing</span>
                                     @endif
                                 </td>
                                 <td class="text-right">
@@ -128,6 +217,40 @@
         color: white;
         border-radius: 50%;
         font-weight: 600;
+        font-size: 0.875rem;
+    }
+    .stat-card-link {
+        text-decoration: none;
+        color: inherit;
+        cursor: pointer;
+        transition: transform 0.1s ease;
+    }
+    .stat-card-link:hover {
+        transform: scale(1.03);
+    }
+    .dash-review-item {
+        padding: 0.75rem 1rem;
+        border-bottom: 1px solid var(--border-color);
+        font-size: 0.9375rem;
+    }
+    .dash-review-item:last-child {
+        border-bottom: none;
+    }
+    .lock-badges {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.35rem;
+    }
+    .freeze-banner {
+        padding: 1rem;
+        background: #fff3cd;
+        border: 1px solid #ffc107;
+        border-radius: var(--border-radius);
+        color: #664d03;
+        font-size: 0.9375rem;
+    }
+    .btn-sm {
+        padding: 0.375rem 0.75rem;
         font-size: 0.875rem;
     }
 </style>

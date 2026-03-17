@@ -49,7 +49,7 @@
                                     @if($isLocked)
                                         <span class="badge badge-attention">{{ implode(', ', $locks) }} Locked</span>
                                     @else
-                                        <span class="badge badge-success">Good Standing</span>
+                                        <span class="badge badge-success">Good standing</span>
                                     @endif
                                 </div>
                             </div>

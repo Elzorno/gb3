@@ -1,73 +1,99 @@
-<!doctype html>
-<html lang="en">
-<head>
-    <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>Infraction Review</title>
-    <style>
-        body { font-family: ui-sans-serif, system-ui, sans-serif; margin: 2rem; }
-        .card { border: 1px solid #d4d4d8; border-radius: 12px; padding: 1rem; max-width: 980px; margin-bottom: 1rem; }
-        .item { border-top: 1px solid #e4e4e7; padding: .75rem 0; }
-        .grid { display:grid; gap:.75rem; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); }
-        .ok { color: #166534; }
-        button { border: 1px solid #52525b; border-radius: 10px; background: #18181b; color: #fff; padding: .45rem .75rem; }
-    </style>
-</head>
-<body>
-<div class="card">
-    <h1>Infraction Review</h1>
-    @if (session('status'))
-        <p class="ok">{{ session('status') }}</p>
+@extends('layouts.admin')
+
+@section('title', 'Consequence Review - Grounding Buddy')
+
+@section('header-title', 'Consequence Review')
+
+@section('content')
+    @if(session('status'))
+        <div class="alert alert-success mb-4">
+            {{ session('status') }}
+        </div>
     @endif
-</div>
 
-<div class="card">
-    <h2>Due now</h2>
-    @forelse($dueNow as $e)
-        <div class="item">
-            <div><strong>{{ $e->kid?->display_name }}</strong> · {{ $e->definition?->label }} · review_on {{ $e->review_on }}</div>
-            <form method="post" action="{{ route('admin.infractions.review.decide') }}" class="grid" style="margin-top:.5rem;">
-                @csrf
-                <input type="hidden" name="event_id" value="{{ $e->id }}">
-                <label>
-                    Action
-                    <select name="action">
-                        <option value="review_only">review_only</option>
-                        <option value="unlock">unlock</option>
-                        <option value="shorten">shorten</option>
-                    </select>
-                </label>
-                <label>
-                    Keep minutes
-                    <input type="number" name="keep_minutes" min="0" max="10080" value="240">
-                </label>
-                <label>
-                    Reset strike
-                    <input type="checkbox" name="reset_strike" value="1">
-                </label>
-                <label>
-                    Note
-                    <input type="text" name="review_note" value="" maxlength="400">
-                </label>
-                <div style="align-self:end;">
-                    <button type="submit">Mark reviewed</button>
+    {{-- Due Now --}}
+    <div class="card mb-4" @if($dueNow->isNotEmpty()) style="border-left: 4px solid var(--attention);" @endif>
+        <div class="card-header">
+            <h3 class="card-title">Due Now</h3>
+            @if($dueNow->isNotEmpty())
+                <span class="badge badge-attention">{{ $dueNow->count() }} due</span>
+            @endif
+        </div>
+
+        @forelse($dueNow as $e)
+            <div class="review-event-item mb-4 p-4" style="background: var(--neutral-50); border-radius: var(--border-radius);">
+                <div class="flex justify-between items-start mb-2">
+                    <div>
+                        <strong>{{ $e->kid?->display_name }}</strong>
+                        <span style="color: var(--attention);">{{ $e->definition?->label }}</span>
+                    </div>
+                    <span class="text-muted text-sm">Review due {{ \Carbon\Carbon::parse($e->review_on)->format('M j') }}</span>
                 </div>
-            </form>
-        </div>
-    @empty
-        <p>None due.</p>
-    @endforelse
-</div>
+                <div class="text-muted text-sm mb-3">
+                    Applied {{ $e->ts->diffForHumans() }} &middot;
+                    {{ $e->days_applied }} day{{ $e->days_applied > 1 ? 's' : '' }} &middot;
+                    Strike {{ $e->strike_after }}
+                </div>
 
-<div class="card">
-    <h2>Upcoming (7 days)</h2>
-    @forelse($upcoming as $e)
-        <div class="item">
-            <div><strong>{{ $e->kid?->display_name }}</strong> · {{ $e->definition?->label }} · review_on {{ $e->review_on }}</div>
+                <form method="POST" action="{{ route('admin.infractions.review.decide') }}">
+                    @csrf
+                    <input type="hidden" name="event_id" value="{{ $e->id }}">
+
+                    <div class="flex flex-wrap gap-4 mb-3">
+                        <div class="form-group mb-0" style="min-width: 160px;">
+                            <label class="form-label">What to do</label>
+                            <select name="action" class="form-input">
+                                <option value="review_only">Note only (keep locks)</option>
+                                <option value="unlock">Unlock all</option>
+                                <option value="shorten">Shorten remaining time</option>
+                            </select>
+                        </div>
+
+                        <div class="form-group mb-0" style="min-width: 140px;">
+                            <label class="form-label">Keep (minutes)</label>
+                            <input type="number" name="keep_minutes" class="form-input" min="0" max="10080" value="240" placeholder="Only for shorten">
+                        </div>
+
+                        <div class="form-group mb-0" style="min-width: 200px;">
+                            <label class="form-label">Note</label>
+                            <input type="text" name="review_note" class="form-input" maxlength="400" placeholder="Optional review note">
+                        </div>
+                    </div>
+
+                    <div class="flex items-center gap-4">
+                        <label class="flex items-center gap-2">
+                            <input type="checkbox" name="reset_strike" value="1">
+                            <span>Reset strike count</span>
+                        </label>
+
+                        <button type="submit" class="btn btn-primary">
+                            Save Review
+                        </button>
+                    </div>
+                </form>
+            </div>
+        @empty
+            <p class="text-muted text-center p-4 mb-0">No reviews due right now.</p>
+        @endforelse
+    </div>
+
+    {{-- Upcoming --}}
+    <div class="card">
+        <div class="card-header">
+            <h3 class="card-title">Upcoming (Next 7 Days)</h3>
         </div>
-    @empty
-        <p>No upcoming reviews.</p>
-    @endforelse
-</div>
-</body>
-</html>
+
+        @forelse($upcoming as $e)
+            <div class="flex justify-between items-center p-3" style="border-bottom: 1px solid var(--border-color);">
+                <div>
+                    <strong>{{ $e->kid?->display_name }}</strong>
+                    <span class="text-muted">&middot;</span>
+                    <span>{{ $e->definition?->label }}</span>
+                </div>
+                <span class="text-muted text-sm">{{ \Carbon\Carbon::parse($e->review_on)->format('M j, Y') }}</span>
+            </div>
+        @empty
+            <p class="text-muted text-center p-4 mb-0">No upcoming reviews.</p>
+        @endforelse
+    </div>
+@endsection

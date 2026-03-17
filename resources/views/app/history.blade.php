@@ -33,8 +33,56 @@
            class="filter-tab {{ $filter === 'bonuses' ? 'active' : '' }}">
             Bonuses
         </a>
+        <a href="{{ route('app.history', ['filter' => 'rewards']) }}" 
+           class="filter-tab {{ $filter === 'rewards' ? 'active' : '' }}">
+            Rewards
+        </a>
     </div>
 
+    @if($filter === 'rewards')
+        {{-- Reward Ledger --}}
+        <div class="card">
+            @if($ledger->isEmpty())
+                <div class="empty-state">
+                    <span class="empty-icon">💰</span>
+                    <p class="mb-0">No rewards yet. Complete bonuses to earn rewards!</p>
+                </div>
+            @else
+                <div class="history-list">
+                    @foreach($ledger as $entry)
+                        <div class="history-item status-{{ $entry->type === 'credit' ? 'approved' : 'rejected' }}">
+                            <div class="history-status-icon">
+                                {{ $entry->type === 'credit' ? '+' : '−' }}
+                            </div>
+                            <div class="history-content">
+                                <div class="history-title">{{ $entry->note ?? ucfirst($entry->source) }}</div>
+                                <div class="history-meta">
+                                    <span>{{ $entry->created_at?->diffForHumans() }}</span>
+                                </div>
+                            </div>
+                            <div class="ledger-amounts">
+                                @if($entry->cents != 0)
+                                    <span class="ledger-amount {{ $entry->cents > 0 ? 'positive' : 'negative' }}">
+                                        {{ $entry->cents > 0 ? '+' : '' }}${{ number_format(abs($entry->cents) / 100, 2) }}
+                                    </span>
+                                @endif
+                                @if($entry->phone_min != 0)
+                                    <span class="ledger-amount {{ $entry->phone_min > 0 ? 'positive' : 'negative' }}">
+                                        📱 {{ $entry->phone_min > 0 ? '+' : '' }}{{ $entry->phone_min }}m
+                                    </span>
+                                @endif
+                                @if($entry->games_min != 0)
+                                    <span class="ledger-amount {{ $entry->games_min > 0 ? 'positive' : 'negative' }}">
+                                        🎮 {{ $entry->games_min > 0 ? '+' : '' }}{{ $entry->games_min }}m
+                                    </span>
+                                @endif
+                            </div>
+                        </div>
+                    @endforeach
+                </div>
+            @endif
+        </div>
+    @else
     {{-- Submissions list --}}
     <div class="card">
         @if($submissions->isEmpty())
@@ -78,7 +126,12 @@
                             </div>
                             @if($sub->status === 'rejected' && $sub->review_note)
                                 <div class="history-note">
-                                    <strong>Note:</strong> {{ $sub->review_note }}
+                                    {{ $sub->review_note }}
+                                </div>
+                            @endif
+                            @if($sub->status === 'rejected')
+                                <div class="history-recovery">
+                                    You can redo this and resubmit when ready.
                                 </div>
                             @endif
                         </div>
@@ -89,7 +142,7 @@
                             @elseif($sub->status === 'pending')
                                 <span class="badge badge-warning">Waiting</span>
                             @elseif($sub->status === 'rejected')
-                                <span class="badge badge-attention">Redo</span>
+                                <span class="badge badge-attention">Try again</span>
                             @endif
                         </div>
                     </div>
@@ -104,6 +157,7 @@
             @endif
         @endif
     </div>
+    @endif
 
     <div class="encouragement mt-4">
         <span class="encouragement-emoji">📊</span>
@@ -261,6 +315,13 @@
         color: var(--attention-dark);
     }
 
+    .history-recovery {
+        margin-top: 0.25rem;
+        font-size: 0.8rem;
+        color: var(--secondary);
+        font-style: italic;
+    }
+
     .history-status-badge {
         flex-shrink: 0;
     }
@@ -325,6 +386,28 @@
 
     .encouragement p {
         color: var(--text-secondary);
+    }
+
+    /* Ledger amounts */
+    .ledger-amounts {
+        display: flex;
+        flex-direction: column;
+        align-items: flex-end;
+        gap: 0.125rem;
+        flex-shrink: 0;
+    }
+
+    .ledger-amount {
+        font-weight: 600;
+        font-size: 0.875rem;
+    }
+
+    .ledger-amount.positive {
+        color: var(--success-dark);
+    }
+
+    .ledger-amount.negative {
+        color: var(--attention-dark);
     }
 </style>
 @endpush

@@ -20,9 +20,9 @@
                 <div class="flex justify-between items-start mb-3">
                     <h3 class="card-title mb-0">{{ $kid->display_name }}</h3>
                     @if($hasGrounding)
-                        <span class="badge badge-attention">Grounded</span>
+                        <span class="badge badge-attention">Privileges paused</span>
                     @else
-                        <span class="badge badge-success">Good Standing</span>
+                        <span class="badge badge-success">Good standing</span>
                     @endif
                 </div>
 
@@ -60,6 +60,17 @@
                             @endif
                         </div>
                     @endforeach
+                    @if($priv && ($priv->bank_cents ?? 0) > 0)
+                        <div class="privilege-item unlocked">
+                            <div class="privilege-status">
+                                <span class="privilege-icon">💵</span>
+                                <span class="privilege-label">Cash</span>
+                            </div>
+                            <span class="privilege-bank text-sm" style="color: var(--safe);">
+                                ${{ number_format($priv->bank_cents / 100, 2) }}
+                            </span>
+                        </div>
+                    @endif
                 </div>
 
                 {{-- Quick actions --}}

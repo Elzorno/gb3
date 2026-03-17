@@ -68,17 +68,20 @@ class SubmissionController extends Controller
         $v = $request->validate([
             'slot_id' => ['required', 'integer', 'min:1'],
             'day' => ['required', 'date_format:Y-m-d'],
-            'photo' => ['required', 'image', 'max:10240'], // max 10MB
+            'photo' => ['required', 'image', 'mimes:jpg,jpeg,png,gif,webp,heic,heif', 'max:10240'],
         ]);
 
         // Handle file upload
         $file = $request->file('photo');
+        $ext = in_array($file->getClientOriginalExtension(), ['jpg','jpeg','png','gif','webp','heic','heif'], true)
+            ? $file->getClientOriginalExtension()
+            : 'jpg';
         $filename = sprintf(
             '%s_%d_%d.%s',
             $v['day'],
             $kidId,
             $v['slot_id'],
-            $file->getClientOriginalExtension()
+            $ext
         );
         
         // Store in public uploads directory

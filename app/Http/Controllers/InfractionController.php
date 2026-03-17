@@ -38,15 +38,31 @@ class InfractionController extends Controller
             'kid_id' => ['required', 'integer', 'min:1'],
             'infraction_def_id' => ['required', 'integer', 'min:1'],
             'note' => ['nullable', 'string', 'max:300'],
+            'lane' => ['nullable', 'string', 'in:ordinary,safety'],
+            'repair' => ['nullable', 'string', 'in:redo_task,apology,calm_recheck,review_tomorrow,none'],
         ]);
 
         $kid = Kid::findOrFail($v['kid_id']);
         $def = $this->infractions->activeDefinitions()->firstWhere('id', $v['infraction_def_id']);
-        
+
+        $note = trim($v['note'] ?? '');
+        if (!empty($v['lane']) && $v['lane'] === 'safety') {
+            $note = '[SAFETY] ' . $note;
+        }
+        if (!empty($v['repair']) && $v['repair'] !== 'none') {
+            $repairLabels = [
+                'redo_task' => 'Redo the task correctly',
+                'apology' => 'Genuine apology or repair action',
+                'calm_recheck' => 'Calm recheck later today',
+                'review_tomorrow' => 'Review at next check-in',
+            ];
+            $note .= ' [Repair: ' . ($repairLabels[$v['repair']] ?? $v['repair']) . ']';
+        }
+
         $this->infractions->apply(
             (int)$v['kid_id'],
             (int)$v['infraction_def_id'],
-            isset($v['note']) ? (string)$v['note'] : '',
+            $note,
             'admin',
             0,
         );

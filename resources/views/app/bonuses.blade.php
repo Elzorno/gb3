@@ -5,16 +5,22 @@
 @section('header-title', 'Bonus Tasks')
 
 @section('content')
-    {{-- Weekly earnings summary --}}
+    {{-- Current balances --}}
     <div class="card earnings-card text-center mb-4">
         <div class="earnings-amount">
-            @if($weekEarnings > 0)
-                ${{ number_format($weekEarnings / 100, 2) }}
-            @else
-                $0.00
-            @endif
+            ${{ number_format($bankCents / 100, 2) }}
         </div>
-        <div class="earnings-label">Earned this week</div>
+        <div class="earnings-label">Cash Balance</div>
+        @if($bankPhoneMin > 0 || $bankGamesMin > 0)
+            <div class="balance-extras mt-2">
+                @if($bankPhoneMin > 0)
+                    <span class="balance-badge">📱 {{ $bankPhoneMin }} min</span>
+                @endif
+                @if($bankGamesMin > 0)
+                    <span class="balance-badge">🎮 {{ $bankGamesMin }} min</span>
+                @endif
+            </div>
+        @endif
     </div>
 
     {{-- My active bonuses --}}
@@ -44,15 +50,20 @@
                                 @elseif($instance->status === 'pending')
                                     <span class="badge badge-warning">Waiting for review</span>
                                 @elseif($instance->status === 'rejected')
-                                    <span class="badge badge-attention">Needs to be redone</span>
+                                    <span class="badge badge-attention">Try again</span>
                                 @endif
                             </div>
                         </div>
                         
                         @if($instance->status === 'claimed' || $instance->status === 'rejected')
-                            <a href="{{ route('app.submit') }}?bonus={{ $instance->id }}" class="bonus-action">
-                                Submit Proof
-                            </a>
+                            <form method="POST" action="{{ route('app.bonuses.submit') }}" enctype="multipart/form-data" class="bonus-submit-form">
+                                @csrf
+                                <input type="hidden" name="instance_id" value="{{ $instance->id }}">
+                                <label class="bonus-action" style="cursor:pointer;">
+                                    <input type="file" name="photo" accept="image/*" capture="environment" style="display:none;" onchange="this.form.submit()">
+                                    📸 Submit Proof
+                                </label>
+                            </form>
                         @endif
                     </div>
                 @endforeach
@@ -149,6 +160,20 @@
         font-size: 0.9375rem;
         opacity: 0.9;
         margin-top: 0.25rem;
+    }
+
+    .balance-extras {
+        display: flex;
+        justify-content: center;
+        gap: 0.75rem;
+    }
+
+    .balance-badge {
+        display: inline-block;
+        padding: 0.25rem 0.5rem;
+        background: rgba(255,255,255,0.2);
+        border-radius: var(--border-radius);
+        font-size: 0.875rem;
     }
 
     /* Bonus list */

@@ -27,6 +27,19 @@ class Kid extends Model
         return $this->display_name;
     }
 
+    /**
+     * Whether the kid currently has any active privilege lock.
+     */
+    public function getIsGroundedAttribute(): bool
+    {
+        $priv = $this->privileges;
+        if (!$priv) {
+            return false;
+        }
+
+        return $priv->phone_locked || $priv->games_locked || $priv->other_locked;
+    }
+
     public function privileges(): HasOne
     {
         return $this->hasOne(Privilege::class);

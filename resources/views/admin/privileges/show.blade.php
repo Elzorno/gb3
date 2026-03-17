@@ -22,7 +22,7 @@
 
             @if($hasGrounding)
                 <div class="alert alert-attention mb-4">
-                    {{ $kid->display_name }} is currently grounded.
+                    {{ $kid->display_name }} has privileges paused.
                 </div>
             @else
                 <div class="alert alert-success mb-4">
@@ -81,11 +81,29 @@
 
         {{-- Time Banks --}}
         <div class="card">
-            <h3 class="card-title">Time Banks</h3>
+            <h3 class="card-title">Balances</h3>
             <p class="text-muted mb-4">
-                Banked time can be earned through bonuses and good behavior. 
-                Kids can "spend" banked minutes for extra screen time.
+                Balances earned through bonuses and good behavior.
             </p>
+
+            <div class="balance-display mb-4 p-3" style="background: var(--neutral-50); border-radius: var(--border-radius);">
+                <div class="flex justify-between items-center mb-2">
+                    <span class="form-label mb-0">💵 Cash Balance</span>
+                    <strong>${{ number_format(($privilege->bank_cents ?? 0) / 100, 2) }}</strong>
+                </div>
+                <div class="flex justify-between items-center mb-2">
+                    <span class="form-label mb-0">📱 Phone Minutes</span>
+                    <strong>{{ $privilege->bank_phone_min ?? 0 }} min</strong>
+                </div>
+                <div class="flex justify-between items-center mb-2">
+                    <span class="form-label mb-0">🎮 Game Minutes</span>
+                    <strong>{{ $privilege->bank_games_min ?? 0 }} min</strong>
+                </div>
+                <div class="flex justify-between items-center">
+                    <span class="form-label mb-0">📺 Other Minutes</span>
+                    <strong>{{ $privilege->bank_other_min ?? 0 }} min</strong>
+                </div>
+            </div>
 
             <form method="POST" action="{{ route('admin.privileges.bank', $kid) }}">
                 @csrf
