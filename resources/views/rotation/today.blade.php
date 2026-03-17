@@ -1,49 +1,110 @@
-<!doctype html>
-<html lang="en">
-<head>
-    <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>Rotation Today</title>
-    <style>
-        body { font-family: ui-sans-serif, system-ui, sans-serif; margin: 2rem; }
-        .card { border: 1px solid #d4d4d8; border-radius: 12px; padding: 1rem; max-width: 720px; }
-        .muted { color: #52525b; }
-        table { width: 100%; border-collapse: collapse; margin-top: 0.75rem; }
-        th, td { border-bottom: 1px solid #e4e4e7; text-align: left; padding: 0.45rem 0.25rem; }
-        a.btn { display: inline-block; margin-top: 0.85rem; padding: 0.45rem 0.8rem; border: 1px solid #a1a1aa; border-radius: 10px; text-decoration: none; }
-    </style>
-</head>
-<body>
-<div class="card">
-    <h1>Rotation Today</h1>
-    <p class="muted">Date: {{ $date }}</p>
+@extends('layouts.kid')
 
-    @if (!$isWeekday)
-        <p>Weekend mode. No base rotation assignments.</p>
-    @elseif ($assignments->isEmpty())
-        <p>No assignments available. Define kids, slots, and a rotation rule first.</p>
-    @else
-        <table>
-            <thead>
-            <tr>
-                <th>Kid</th>
-                <th>Slot</th>
-                <th>Status</th>
-            </tr>
-            </thead>
-            <tbody>
-            @foreach($assignments as $a)
-                <tr>
-                    <td>{{ $a->kid?->display_name }}</td>
-                    <td>{{ $a->slot?->title }}</td>
-                    <td>{{ $a->status }}</td>
-                </tr>
-            @endforeach
-            </tbody>
-        </table>
+@section('title', 'Today - Grounding Buddy')
+
+@section('header-title', 'Today')
+
+@section('content')
+    {{-- Status banner if grounded --}}
+    @if(isset($currentKid) && ($currentKid->is_grounded ?? false))
+        <div class="status-banner status-banner-grounded">
+            <div class="status-banner-title">On Consequence</div>
+            <p class="status-banner-text">
+                Complete your tasks to work toward getting back on track.
+            </p>
+        </div>
     @endif
 
-    <a class="btn" href="{{ route('rewrite.home') }}">Back Home</a>
-</div>
-</body>
-</html>
+    {{-- Daily Progress --}}
+    <div class="card text-center">
+        <h3 class="card-title">Today's Progress</h3>
+        <p class="text-muted">{{ $date }}</p>
+        
+        @if (!$isWeekday)
+            <div class="encouragement">
+                <span class="encouragement-emoji">🎉</span>
+                <p>It's the weekend! Enjoy your day.</p>
+            </div>
+        @elseif ($assignments->isEmpty())
+            <div class="encouragement">
+                <span class="encouragement-emoji">📝</span>
+                <p>No tasks assigned yet. Check back later!</p>
+            </div>
+        @else
+            {{-- Progress ring --}}
+            @php
+                $total = $assignments->count();
+                $completed = $assignments->where('status', 'completed')->count();
+                $percent = $total > 0 ? round(($completed / $total) * 100) : 0;
+                $circumference = 2 * 3.14159 * 45;
+                $dashOffset = $circumference - ($circumference * $percent / 100);
+            @endphp
+            
+            <div class="progress-ring">
+                <svg width="120" height="120" class="progress-ring-circle">
+                    <circle class="progress-ring-bg" cx="60" cy="60" r="45"></circle>
+                    <circle 
+                        class="progress-ring-progress" 
+                        cx="60" 
+                        cy="60" 
+                        r="45"
+                        stroke-dasharray="{{ $circumference }}"
+                        stroke-dashoffset="{{ $dashOffset }}"
+                        transform="rotate(-90 60 60)"
+                    ></circle>
+                    <text x="60" y="55" text-anchor="middle" class="progress-ring-text">{{ $completed }}/{{ $total }}</text>
+                    <text x="60" y="75" text-anchor="middle" class="progress-ring-label">tasks</text>
+                </svg>
+            </div>
+            
+            @if($percent == 100)
+                <div class="alert alert-success">
+                    Great job! You've completed all your tasks today!
+                </div>
+            @endif
+        @endif
+    </div>
+
+    {{-- Task List --}}
+    @if ($isWeekday && $assignments->isNotEmpty())
+        <div class="card">
+            <h3 class="card-title">Today's Tasks</h3>
+            
+            <ul class="checklist">
+                @foreach($assignments as $a)
+                    <li class="checklist-item {{ $a->status === 'completed' ? 'completed' : '' }}">
+                        <div class="checklist-checkbox"></div>
+                        <div class="checklist-content">
+                            <div class="checklist-title">{{ $a->slot?->title ?? 'Task' }}</div>
+                            <div class="checklist-meta">
+                                @if($a->status === 'completed')
+                                    Completed
+                                @elseif($a->status === 'pending_review')
+                                    Waiting for review
+                                @else
+                                    Not started
+                                @endif
+                            </div>
+                        </div>
+                    </li>
+                @endforeach
+            </ul>
+        </div>
+
+        {{-- Submit proof button --}}
+        @if($assignments->where('status', '!=', 'completed')->count() > 0)
+            <a href="{{ route('app.submit') }}" class="big-action-btn">
+                Submit Proof
+                <span class="big-action-btn-sub">Take a photo showing your completed task</span>
+            </a>
+        @endif
+    @endif
+
+    {{-- Encouragement for good behavior --}}
+    @if (!($currentKid->is_grounded ?? false))
+        <div class="encouragement">
+            <span class="encouragement-emoji">⭐</span>
+            <p>You're doing great! Keep it up!</p>
+        </div>
+    @endif
+@endsection

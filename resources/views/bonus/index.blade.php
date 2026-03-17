@@ -1,51 +1,68 @@
-<!doctype html>
-<html lang="en">
-<head>
-    <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>Bonuses</title>
-    <style>
-        body { font-family: ui-sans-serif, system-ui, sans-serif; margin: 2rem; }
-        .card { border: 1px solid #d4d4d8; border-radius: 12px; padding: 1rem; max-width: 920px; }
-        .item { border-top: 1px solid #e4e4e7; padding: .8rem 0; }
-        button { border: 1px solid #52525b; border-radius: 10px; background: #18181b; color: #fff; padding: .35rem .7rem; }
-        input { height: 2rem; border: 1px solid #a1a1aa; border-radius: 8px; padding: 0 .5rem; }
-        .ok { color:#166534; }
-    </style>
-</head>
-<body>
-<div class="card">
-    <h1>Bonuses</h1>
-    <p>Week start: {{ $week }}</p>
+@extends('layouts.kid')
 
+@section('title', 'Bonuses - Grounding Buddy')
+
+@section('header-title', 'Bonus Opportunities')
+
+@section('content')
     @if (session('status'))
-        <p class="ok">{{ session('status') }}</p>
+        <div class="alert alert-success">{{ session('status') }}</div>
     @endif
 
-    @forelse($instances as $inst)
-        <div class="item">
-            <div><strong>{{ $inst->definition?->title ?? ('Bonus#'.$inst->bonus_def_id) }}</strong> · status={{ $inst->status }}</div>
+    <div class="card">
+        <p class="text-muted mb-4">Week of {{ $week }}</p>
 
-            @if($inst->status === 'available' && $kidId > 0)
-                <form method="post" action="{{ route('bonus.claim') }}" style="margin-top:.4rem;">
-                    @csrf
-                    <input type="hidden" name="instance_id" value="{{ $inst->id }}">
-                    <button type="submit">Claim</button>
-                </form>
-            @endif
+        @forelse($instances as $inst)
+            @php
+                $isMine = (int)($inst->claimed_by_kid_id ?? 0) === (int)$kidId;
+                $canClaim = $inst->status === 'available' && $kidId > 0;
+                $canSubmit = in_array($inst->status, ['claimed', 'rejected'], true) && $isMine;
+            @endphp
+            
+            <div class="bonus-card {{ $inst->status === 'submitted' || $inst->status === 'approved' ? 'bonus-claimed' : '' }}">
+                <div class="bonus-title">{{ $inst->definition?->title ?? 'Bonus Opportunity' }}</div>
+                <div class="bonus-points">+{{ $inst->definition?->points ?? 0 }} points</div>
+                
+                @if($inst->status === 'approved')
+                    <span class="badge badge-success mt-4">Completed!</span>
+                @elseif($inst->status === 'submitted')
+                    <span class="badge badge-neutral mt-4">Waiting for Review</span>
+                @elseif($inst->status === 'rejected')
+                    <div class="alert alert-attention mt-4 mb-0 text-left">
+                        <strong>Needs Redo</strong>
+                        <p class="mb-0" style="font-weight: normal;">Please try again.</p>
+                    </div>
+                @elseif($isMine)
+                    <span class="badge badge-attention mt-4">You claimed this!</span>
+                @endif
+                
+                @if($canClaim)
+                    <form method="POST" action="{{ route('app.bonuses.claim') }}" class="mt-4">
+                        @csrf
+                        <input type="hidden" name="instance_id" value="{{ $inst->id }}">
+                        <button type="submit" class="btn btn-attention btn-block">
+                            I'll Do This!
+                        </button>
+                    </form>
+                @endif
+                
+                @if($canSubmit)
+                    <a href="{{ route('app.submit') }}?bonus={{ $inst->id }}" class="btn btn-success btn-block mt-4">
+                        Submit Proof
+                    </a>
+                @endif
+            </div>
+        @empty
+            <div class="encouragement">
+                <span class="encouragement-emoji">🎯</span>
+                <p>No bonus opportunities available this week.</p>
+                <p class="text-muted" style="font-size: 0.875rem;">Check back later - new ones might appear!</p>
+            </div>
+        @endforelse
+    </div>
 
-            @if(in_array($inst->status, ['claimed','rejected'], true) && (int)$inst->claimed_by_kid_id === (int)$kidId)
-                <form method="post" action="{{ route('bonus.submit') }}" style="margin-top:.4rem; display:flex; gap:.5rem; align-items:center;">
-                    @csrf
-                    <input type="hidden" name="instance_id" value="{{ $inst->id }}">
-                    <input type="text" name="proof_path" value="uploads/NO_PHOTO">
-                    <button type="submit">Submit Proof</button>
-                </form>
-            @endif
-        </div>
-    @empty
-        <p>No bonus definitions available.</p>
-    @endforelse
-</div>
-</body>
-</html>
+    <div class="encouragement">
+        <span class="encouragement-emoji">⭐</span>
+        <p>Bonuses are a great way to earn extra points!</p>
+    </div>
+@endsection

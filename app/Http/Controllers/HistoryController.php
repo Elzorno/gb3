@@ -5,7 +5,9 @@ declare(strict_types=1);
 namespace App\Http\Controllers;
 
 use App\Models\InfractionEvent;
+use App\Models\Kid;
 use App\Models\Submission;
+use Carbon\CarbonImmutable;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\View\View;
@@ -16,42 +18,47 @@ class HistoryController extends Controller
     {
         $kidId = (int)$request->session()->get('gb2_kid_id', 0);
         if ($kidId <= 0) {
-            return redirect()->route('kid.login')->with('status', 'Please log in first.');
+            return redirect()->route('app.login')->with('error', 'Please log in first.');
         }
 
-        $status = (string)$request->query('status', '');
-        $kind = (string)$request->query('kind', '');
-        $perPage = max(5, min(50, (int)$request->query('per_page', 10)));
+        $kid = Kid::find($kidId);
+        $filter = (string)$request->query('filter', 'all'); // all, chores, bonuses
+        $perPage = 15;
 
         $q = Submission::query()
-            ->with(['slot'])
+            ->with(['slot', 'bonusInstance.definition'])
             ->where('kid_id', $kidId)
             ->orderByDesc('submitted_at')
             ->orderByDesc('id');
 
-        if (in_array($status, ['pending', 'approved', 'rejected'], true)) {
-            $q->where('status', $status);
+        if ($filter === 'chores') {
+            $q->where('kind', 'base');
+        } elseif ($filter === 'bonuses') {
+            $q->where('kind', 'bonus');
         }
-        if (in_array($kind, ['base', 'bonus'], true)) {
-            $q->where('kind', $kind);
-        }
 
-        $rows = $q->paginate($perPage)->withQueryString();
+        $submissions = $q->paginate($perPage)->withQueryString();
 
-        $infractions = InfractionEvent::query()
-            ->with(['definition'])
-            ->where('kid_id', $kidId)
-            ->orderByDesc('ts')
-            ->orderByDesc('id')
-            ->limit(30)
-            ->get();
+        // Stats for this week
+        $weekStart = CarbonImmutable::now()->startOfWeek(CarbonImmutable::MONDAY)->format('Y-m-d');
+        $weekStats = [
+            'chores_done' => Submission::where('kid_id', $kidId)
+                ->where('kind', 'base')
+                ->where('status', 'approved')
+                ->whereDate('day', '>=', $weekStart)
+                ->count(),
+            'bonuses_done' => Submission::where('kid_id', $kidId)
+                ->where('kind', 'bonus')
+                ->where('status', 'approved')
+                ->where('week_start', $weekStart)
+                ->count(),
+        ];
 
-        return view('history.index', [
-            'rows' => $rows,
-            'infractions' => $infractions,
-            'status' => $status,
-            'kind' => $kind,
-            'perPage' => $perPage,
+        return view('app.history', [
+            'kid' => $kid,
+            'submissions' => $submissions,
+            'filter' => $filter,
+            'weekStats' => $weekStats,
         ]);
     }
 }

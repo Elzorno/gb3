@@ -42,32 +42,60 @@ class RotationPlanner
         }
 
         $kidsByName = Kid::query()->orderBy('sort_order')->orderBy('id')->get()->keyBy('display_name');
+        $kidsById = Kid::query()->orderBy('sort_order')->orderBy('id')->get()->keyBy('id');
         $slotsByTitle = ChoreSlot::query()->where('active', true)->orderBy('sort_order')->orderBy('id')->get()->keyBy('title');
+        $slotsById = ChoreSlot::query()->where('active', true)->orderBy('sort_order')->orderBy('id')->get()->keyBy('id');
 
-        $kidNames = json_decode((string)$rule->kids_json, true);
-        $slotTitles = json_decode((string)$rule->slots_json, true);
-        if (!is_array($kidNames) || !is_array($slotTitles) || count($kidNames) === 0 || count($slotTitles) === 0) {
+        $kidValues = json_decode((string)$rule->kids_json, true);
+        $slotValues = json_decode((string)$rule->slots_json, true);
+        if (!is_array($kidValues) || !is_array($slotValues) || count($kidValues) === 0 || count($slotValues) === 0) {
+            return collect();
+        }
+        
+        // Detect format: legacy uses names/titles, new uses IDs
+        $firstKid = $kidValues[0] ?? null;
+        $legacyKidFormat = $firstKid && !is_numeric($firstKid);
+        
+        $firstSlot = $slotValues[0] ?? null;
+        $legacySlotFormat = $firstSlot && !is_numeric($firstSlot);
+        
+        // Build ordered lists of kids and slots
+        $orderedKids = [];
+        foreach ($kidValues as $val) {
+            if ($legacyKidFormat) {
+                $kid = $kidsByName->get((string)$val);
+            } else {
+                $kid = $kidsById->get((int)$val);
+            }
+            if ($kid) {
+                $orderedKids[] = $kid;
+            }
+        }
+        
+        $orderedSlots = [];
+        foreach ($slotValues as $val) {
+            if ($legacySlotFormat) {
+                $slot = $slotsByTitle->get((string)$val);
+            } else {
+                $slot = $slotsById->get((int)$val);
+            }
+            if ($slot) {
+                $orderedSlots[] = $slot;
+            }
+        }
+        
+        if (count($orderedKids) === 0 || count($orderedSlots) === 0) {
             return collect();
         }
 
-        $anchor = CarbonImmutable::parse((string)$rule->anchor_monday);
-        $days = (int)$anchor->diffInDays($date);
-        $weeks = intdiv($days, 7);
+        // Offset is simply day-of-week: Mon=0, Tue=1, Wed=2, Thu=3, Fri=4
+        // Each kid shifts to the next chore each day
+        $dayOfWeekOffset = (int)$date->format('N') - 1; // N: 1=Mon, 7=Sun
 
         $rotation = [];
-        foreach ($kidNames as $idx => $kidName) {
-            $name = (string)$kidName;
-            $kid = $kidsByName->get($name);
-            if ($kid === null) {
-                continue;
-            }
-
-            $slotIdx = ($idx + $weeks) % count($slotTitles);
-            $title = (string)$slotTitles[$slotIdx];
-            $slot = $slotsByTitle->get($title);
-            if ($slot === null) {
-                continue;
-            }
+        foreach ($orderedKids as $idx => $kid) {
+            $slotIdx = ($idx + $dayOfWeekOffset) % count($orderedSlots);
+            $slot = $orderedSlots[$slotIdx];
 
             $rotation[] = [
                 'day' => $day,

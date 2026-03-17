@@ -1,0 +1,357 @@
+<?php
+declare(strict_types=1);
+
+require_once __DIR__ . '/../lib/ui.php';
+require_once __DIR__ . '/../lib/common.php';
+require_once __DIR__ . '/../lib/auth.php';
+require_once __DIR__ . '/../lib/db.php';
+require_once __DIR__ . '/../lib/kids.php';
+require_once __DIR__ . '/../lib/rotation.php';
+require_once __DIR__ . '/../lib/ledger.php';
+require_once __DIR__ . '/../lib/bonuses.php';
+require_once __DIR__ . '/../lib/privileges.php';
+require_once __DIR__ . '/../lib/csrf.php';
+
+gb2_db_init();
+gb2_admin_require();
+
+$pdo = gb2_pdo();
+
+$today = new DateTimeImmutable('now');
+$todayYmd = $today->format('Y-m-d');
+$weekStartYmd = gb2_bonus_week_start($todayYmd);
+
+$flash = '';
+$err   = '';
+
+if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST') {
+  gb2_csrf_verify();
+
+  $action = (string)($_POST['action'] ?? '');
+  $kidId  = (int)($_POST['kid_id'] ?? 0);
+
+  if ($kidId <= 0) {
+    $err = 'Invalid kid.';
+  } elseif ($action === 'reset_pin') {
+    // IMPORTANT: pin_hash is NOT NULL — set to empty string, never NULL
+    $st = $pdo->prepare("UPDATE kids SET pin_hash='' WHERE id=?");
+    $st->execute([$kidId]);
+    $flash = 'PIN reset. On next login, they will be prompted to create a new PIN.';
+  } else {
+    $err = 'Unknown action.';
+  }
+}
+
+$kids = gb2_kids_all();
+$weekBonusRows = gb2_bonus_list_week($weekStartYmd);
+
+// Get pending submissions for today
+$stPending = $pdo->prepare("
+  SELECT kid_id, COUNT(*) as count
+  FROM submissions
+  WHERE status='pending' AND submitted_at LIKE ?
+  GROUP BY kid_id
+");
+$stPending->execute([$todayYmd . '%']);
+$pendingByKid = array_column($stPending->fetchAll(PDO::FETCH_ASSOC), 'count', 'kid_id');
+
+// Get submissions for today
+$stToday = $pdo->prepare("
+  SELECT kid_id, COUNT(*) as count, SUM(CASE WHEN status='approved' THEN 1 ELSE 0 END) as approved
+  FROM submissions
+  WHERE submitted_at LIKE ?
+  GROUP BY kid_id
+");
+$stToday->execute([$todayYmd . '%']);
+$submissionsByKid = [];
+foreach ($stToday->fetchAll(PDO::FETCH_ASSOC) as $row) {
+  $submissionsByKid[(int)$row['kid_id']] = [
+    'total' => (int)$row['count'],
+    'approved' => (int)$row['approved'],
+  ];
+}
+
+function bonus_available_count_for_kid(int $kidId, array $rows): int {
+  $count = 0;
+  foreach ($rows as $r) {
+    if (!is_array($r)) continue;
+
+    if (isset($r['kid_id']) && (int)$r['kid_id'] !== $kidId) continue;
+    if (!isset($r['kid_id']) && isset($r['kid']) && (int)$r['kid'] !== $kidId) continue;
+
+    if (isset($r['claimed_by_kid_id']) && (int)$r['claimed_by_kid_id'] === 0) { $count++; continue; }
+    if (isset($r['claimed_by_kid']) && (int)$r['claimed_by_kid'] === 0) { $count++; continue; }
+    if (isset($r['status']) && (string)$r['status'] === 'available') { $count++; continue; }
+  }
+  return $count;
+}
+
+/**
+ * Normalize privileges into:
+ *   ['locks'=>['phone'=>0/1,'games'=>0/1,'other'=>0/1],
+ *    'until'=>['phone'=>iso|null,'games'=>iso|null,'other'=>iso|null],
+ *    'banks'=>['phone'=>min,'games'=>min,'other'=>min]]
+ *
+ * Works whether gb2_priv_get_for_kid() returns:
+ *  - normalized keys (locks/banks), or
+ *  - raw DB columns (phone_locked, bank_phone_min, etc.)
+ */
+function gb2_norm_priv(array $priv): array {
+  if (isset($priv['locks']) && is_array($priv['locks'])) {
+    $locks = $priv['locks'];
+    $banks = (isset($priv['banks']) && is_array($priv['banks'])) ? $priv['banks'] : [];
+    $until = (isset($priv['until']) && is_array($priv['until'])) ? $priv['until'] : [];
+
+    return [
+      'locks' => [
+        'phone' => (int)($locks['phone'] ?? $locks['phone_locked'] ?? 0),
+        'games' => (int)($locks['games'] ?? $locks['games_locked'] ?? 0),
+        'other' => (int)($locks['other'] ?? $locks['other_locked'] ?? 0),
+      ],
+      'until' => [
+        'phone' => (string)($until['phone'] ?? $priv['phone_locked_until'] ?? ''),
+        'games' => (string)($until['games'] ?? $priv['games_locked_until'] ?? ''),
+        'other' => (string)($until['other'] ?? $priv['other_locked_until'] ?? ''),
+      ],
+      'banks' => [
+        'phone' => (int)($banks['phone'] ?? $banks['bank_phone_min'] ?? 0),
+        'games' => (int)($banks['games'] ?? $banks['bank_games_min'] ?? 0),
+        'other' => (int)($banks['other'] ?? $banks['bank_other_min'] ?? 0),
+      ],
+    ];
+  }
+
+  return [
+    'locks' => [
+      'phone' => (int)($priv['phone_locked'] ?? 0),
+      'games' => (int)($priv['games_locked'] ?? 0),
+      'other' => (int)($priv['other_locked'] ?? 0),
+    ],
+    'until' => [
+      'phone' => (string)($priv['phone_locked_until'] ?? ''),
+      'games' => (string)($priv['games_locked_until'] ?? ''),
+      'other' => (string)($priv['other_locked_until'] ?? ''),
+    ],
+    'banks' => [
+      'phone' => (int)($priv['bank_phone_min'] ?? 0),
+      'games' => (int)($priv['bank_games_min'] ?? 0),
+      'other' => (int)($priv['bank_other_min'] ?? 0),
+    ],
+  ];
+}
+
+function gb2_until_ts(string $iso): int {
+  if ($iso === '') return 0;
+  $t = strtotime($iso);
+  return $t ? (int)$t : 0;
+}
+
+gb2_page_start('Family', null);
+?>
+
+<div class="card">
+  <div class="h1">Family Dashboard</div>
+  <div class="h2">Quick view for today</div>
+
+  <div class="note" style="margin-top:10px">
+    Today: <?= gb2_h($today->format('l, M j')) ?>
+  </div>
+
+  <?php gb2_flash_render(); ?>
+
+  <?php if ($flash): ?>
+    <div class="status approved" style="margin-top:12px"><?= gb2_h($flash) ?></div>
+  <?php endif; ?>
+
+  <?php if ($err): ?>
+    <div class="status rejected" style="margin-top:12px"><?= gb2_h($err) ?></div>
+  <?php endif; ?>
+
+  <!-- Submission Status Overview -->
+  <div class="summary-grid two" style="margin-top:14px">
+    <div class="summary-card">
+      <div class="summary-title">🔍 Pending Review</div>
+      <div class="kpi" style="color:var(--warn)">
+        <?php
+          $totalPending = 0;
+          foreach ($pendingByKid as $count) $totalPending += $count;
+          echo (int)$totalPending;
+        ?>
+      </div>
+      <div class="kpi-sub">Photos awaiting approval</div>
+    </div>
+    <div class="summary-card">
+      <div class="summary-title">✓ Today's Submissions</div>
+      <div class="kpi" style="color:var(--ok)">
+        <?php
+          $totalSubmitted = 0;
+          foreach ($submissionsByKid as $data) $totalSubmitted += $data['approved'];
+          echo (int)$totalSubmitted;
+        ?>
+      </div>
+      <div class="kpi-sub">Approved today</div>
+    </div>
+  </div>
+</div>
+
+<?php foreach ($kids as $kidRow): ?>
+<?php
+  $kidId   = (int)($kidRow['id'] ?? 0);
+  $earnedWeek = $kidId ? gb2_ledger_sum_cents_for_kid($kidId, 'bonus_reward', $weekStartYmd) : 0;
+  $earnedAll  = $kidId ? gb2_ledger_sum_cents_for_kid($kidId, 'bonus_reward', null) : 0;
+  $kidName = (string)($kidRow['name'] ?? ('Kid #' . $kidId));
+
+  $assignments = $kidId ? gb2_assignments_for_kid_day($kidId, $todayYmd) : [];
+  $privRaw     = $kidId ? gb2_priv_get_for_kid($kidId) : [];
+  $priv        = is_array($privRaw) ? gb2_norm_priv($privRaw) : ['locks'=>['phone'=>0,'games'=>0,'other'=>0], 'until'=>['phone'=>'','games'=>'','other'=>''], 'banks'=>['phone'=>0,'games'=>0,'other'=>0]];
+
+  $bonusAvail  = $kidId ? bonus_available_count_for_kid($kidId, $weekBonusRows) : 0;
+
+  $titles = [];
+  foreach ($assignments as $a) {
+    if (is_array($a)) $titles[] = (string)($a['slot_title'] ?? $a['title'] ?? $a['name'] ?? 'Chore');
+    else $titles[] = (string)$a;
+  }
+
+  $locks = $priv['locks'];
+  $until = $priv['until'];
+  $banks = $priv['banks'];
+
+  $anyLock = ((int)$locks['phone'] === 1) || ((int)$locks['games'] === 1) || ((int)$locks['other'] === 1);
+
+  $phoneUntilIso = (string)($until['phone'] ?? '');
+  $gamesUntilIso = (string)($until['games'] ?? '');
+  $otherUntilIso = (string)($until['other'] ?? '');
+
+  $phoneUntilTs = gb2_until_ts($phoneUntilIso);
+  $gamesUntilTs = gb2_until_ts($gamesUntilIso);
+  $otherUntilTs = gb2_until_ts($otherUntilIso);
+?>
+
+  <div class="card">
+    <div class="row" style="justify-content:space-between; align-items:center">
+      <div>
+        <div class="h1"><?= gb2_h($kidName) ?></div>
+        <div class="h2">Today + privileges</div>
+      </div>
+
+      <form method="post" style="margin:0"
+            onsubmit="return confirm('Reset PIN for <?= gb2_h($kidName) ?>? They will set a new PIN next time they log in.');">
+        <input type="hidden" name="_csrf" value="<?= gb2_h(gb2_csrf_token()) ?>">
+        <input type="hidden" name="action" value="reset_pin">
+        <input type="hidden" name="kid_id" value="<?= (int)$kidId ?>">
+        <button class="btn" type="submit">Reset PIN</button>
+      </form>
+    </div>
+
+    <div style="height:10px"></div>
+
+    <!-- Submission Status for This Kid -->
+    <?php 
+      $todayPending = (int)($pendingByKid[$kidId] ?? 0);
+      $todayData = $submissionsByKid[$kidId] ?? ['total'=>0, 'approved'=>0];
+      $todayTotal = (int)($todayData['total'] ?? 0);
+      $todayApproved = (int)($todayData['approved'] ?? 0);
+    ?>
+    <div class="small">Today's Status</div>
+    <div class="row" style="gap:10px; flex-wrap:wrap; margin-top:8px">
+      <?php if (!empty($titles)): ?>
+        <div class="status open">
+          📋 <?= count($titles) ?> assigned
+        </div>
+        <div class="status approved">
+          ✓ <?= (int)$todayApproved ?> approved
+        </div>
+        <?php if ($todayPending > 0): ?>
+          <div class="status pending">
+            ⏳ <?= (int)$todayPending ?> pending
+          </div>
+        <?php endif; ?>
+      <?php else: ?>
+        <div class="note" style="margin-top:0">No chores assigned for today.</div>
+      <?php endif; ?>
+    </div>
+
+    <div style="height:10px"></div>
+
+    <div class="small">Assigned chores</div>
+    <?php if (!empty($titles)): ?>
+      <ul style="margin:8px 0 0 1.2rem">
+        <?php foreach ($titles as $t): ?>
+          <li><?= gb2_h($t) ?></li>
+        <?php endforeach; ?>
+      </ul>
+    <?php else: ?>
+      <div class="note" style="margin-top:8px">No chores assigned for today.</div>
+    <?php endif; ?>
+
+    <div style="height:14px"></div>
+
+    <div class="small">Bonus chores</div>
+    <?php if ($bonusAvail > 0): ?>
+      <div class="note" style="margin-top:8px"><?= (int)$bonusAvail ?> available this week</div>
+    <?php else: ?>
+      <div class="note" style="margin-top:8px">None available right now.</div>
+    <?php endif; ?>
+
+    <div style="height:14px"></div>
+
+    <div class="small">Locks</div>
+    <div class="row" style="gap:10px; flex-wrap:wrap; margin-top:8px">
+      <?php if ($anyLock): ?>
+
+        <?php if ((int)$locks['phone'] === 1): ?>
+          <div class="badge badge-lock">
+            Phone: Locked
+            <?php if ($phoneUntilIso !== '' && $phoneUntilTs > 0): ?>
+              <span class="lock-until">until <?= gb2_h($phoneUntilIso) ?></span>
+              <span class="lock-countdown" data-gb2-until="<?= (int)$phoneUntilTs ?>"></span>
+            <?php endif; ?>
+          </div>
+        <?php endif; ?>
+
+        <?php if ((int)$locks['games'] === 1): ?>
+          <div class="badge badge-lock">
+            Games: Locked
+            <?php if ($gamesUntilIso !== '' && $gamesUntilTs > 0): ?>
+              <span class="lock-until">until <?= gb2_h($gamesUntilIso) ?></span>
+              <span class="lock-countdown" data-gb2-until="<?= (int)$gamesUntilTs ?>"></span>
+            <?php endif; ?>
+          </div>
+        <?php endif; ?>
+
+        <?php if ((int)$locks['other'] === 1): ?>
+          <div class="badge badge-lock">
+            Other: Locked
+            <?php if ($otherUntilIso !== '' && $otherUntilTs > 0): ?>
+              <span class="lock-until">until <?= gb2_h($otherUntilIso) ?></span>
+              <span class="lock-countdown" data-gb2-until="<?= (int)$otherUntilTs ?>"></span>
+            <?php endif; ?>
+          </div>
+        <?php endif; ?>
+
+      <?php else: ?>
+        <div class="badge">No active locks</div>
+      <?php endif; ?>
+    </div>
+
+    <div style="height:12px"></div>
+
+    <div class="small">Bonus earnings</div>
+    <div class="row" style="gap:10px; flex-wrap:wrap; margin-top:8px">
+      <div class="badge">This week: <?= gb2_h(gb2_money((int)$earnedWeek)) ?></div>
+      <div class="badge">Total: <?= gb2_h(gb2_money((int)$earnedAll)) ?></div>
+    </div>
+
+    <div style="height:12px"></div>
+
+    <div class="row" style="gap:10px; flex-wrap:wrap">
+      <a class="btn" href="/admin/grounding.php">Edit privileges</a>
+      <a class="btn" href="/admin/review.php">Review proofs</a>
+      <a class="btn" href="/app/today.php">Open kid view</a>
+    </div>
+  </div>
+
+<?php endforeach; ?>
+
+<?php gb2_nav('family'); gb2_page_end(); ?>

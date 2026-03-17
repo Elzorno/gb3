@@ -20,8 +20,8 @@ class InfractionReviewController extends Controller
 
     public function index(): View
     {
-        $today = CarbonImmutable::now('UTC')->format('Y-m-d');
-        $nextWeek = CarbonImmutable::now('UTC')->addDays(7)->format('Y-m-d');
+        $today = CarbonImmutable::now(config('app.timezone'))->format('Y-m-d');
+        $nextWeek = CarbonImmutable::now(config('app.timezone'))->addDays(7)->format('Y-m-d');
 
         return view('infraction.review', [
             'dueNow' => InfractionEvent::query()

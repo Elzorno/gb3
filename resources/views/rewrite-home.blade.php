@@ -22,6 +22,10 @@
     <p>Current kid session id: <strong>{{ session('gb2_kid_id', 'none') }}</strong></p>
 
     <a class="btn" href="{{ route('kid.login') }}">Kid Login</a>
+    <a class="btn" href="/admin/login.php">Parent Login</a>
+    <a class="btn" href="/admin/setup.php">Setup</a>
+    <a class="btn" href="/admin/family.php">Family Dashboard</a>
+    <a class="btn" href="/admin/branding.php">Branding</a>
     <a class="btn" href="{{ route('rotation.today') }}">Rotation Today</a>
     <a class="btn" href="{{ route('bonus.index') }}">Bonuses</a>
     <a class="btn" href="{{ route('submission.create') }}">Submit Proof</a>

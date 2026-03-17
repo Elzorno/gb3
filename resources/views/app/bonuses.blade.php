@@ -1,0 +1,334 @@
+@extends('layouts.kid')
+
+@section('title', 'Bonuses - Grounding Buddy')
+
+@section('header-title', 'Bonus Tasks')
+
+@section('content')
+    {{-- Weekly earnings summary --}}
+    <div class="card earnings-card text-center mb-4">
+        <div class="earnings-amount">
+            @if($weekEarnings > 0)
+                ${{ number_format($weekEarnings / 100, 2) }}
+            @else
+                $0.00
+            @endif
+        </div>
+        <div class="earnings-label">Earned this week</div>
+    </div>
+
+    {{-- My active bonuses --}}
+    @if($myActive->isNotEmpty())
+        <div class="card mb-4">
+            <h3 class="card-title">My Active Bonuses</h3>
+            
+            <div class="bonus-list">
+                @foreach($myActive as $instance)
+                    <div class="bonus-item status-{{ $instance->status }}">
+                        <div class="bonus-content">
+                            <div class="bonus-title">{{ $instance->definition?->title ?? 'Bonus' }}</div>
+                            <div class="bonus-rewards">
+                                @if($instance->definition?->reward_cents > 0)
+                                    <span class="reward">💵 ${{ number_format($instance->definition->reward_cents / 100, 2) }}</span>
+                                @endif
+                                @if($instance->definition?->reward_phone_min > 0)
+                                    <span class="reward">📱 +{{ $instance->definition->reward_phone_min }}min</span>
+                                @endif
+                                @if($instance->definition?->reward_games_min > 0)
+                                    <span class="reward">🎮 +{{ $instance->definition->reward_games_min }}min</span>
+                                @endif
+                            </div>
+                            <div class="bonus-status">
+                                @if($instance->status === 'claimed')
+                                    <span class="badge badge-info">Ready to submit</span>
+                                @elseif($instance->status === 'pending')
+                                    <span class="badge badge-warning">Waiting for review</span>
+                                @elseif($instance->status === 'rejected')
+                                    <span class="badge badge-attention">Needs to be redone</span>
+                                @endif
+                            </div>
+                        </div>
+                        
+                        @if($instance->status === 'claimed' || $instance->status === 'rejected')
+                            <a href="{{ route('app.submit') }}?bonus={{ $instance->id }}" class="bonus-action">
+                                Submit Proof
+                            </a>
+                        @endif
+                    </div>
+                @endforeach
+            </div>
+        </div>
+    @endif
+
+    {{-- Available bonuses --}}
+    <div class="card mb-4">
+        <h3 class="card-title">Available Bonuses</h3>
+        <p class="text-muted mb-4">Claim a bonus to get started. Complete it and submit proof to earn rewards!</p>
+        
+        @if($available->isEmpty())
+            <div class="empty-state">
+                <span class="empty-icon">✨</span>
+                <p class="mb-0">No bonuses available right now. Check back later!</p>
+            </div>
+        @else
+            <div class="bonus-list">
+                @foreach($available as $instance)
+                    <div class="bonus-item available">
+                        <div class="bonus-content">
+                            <div class="bonus-title">{{ $instance->definition?->title ?? 'Bonus' }}</div>
+                            <div class="bonus-rewards">
+                                @if($instance->definition?->reward_cents > 0)
+                                    <span class="reward">💵 ${{ number_format($instance->definition->reward_cents / 100, 2) }}</span>
+                                @endif
+                                @if($instance->definition?->reward_phone_min > 0)
+                                    <span class="reward">📱 +{{ $instance->definition->reward_phone_min }}min</span>
+                                @endif
+                                @if($instance->definition?->reward_games_min > 0)
+                                    <span class="reward">🎮 +{{ $instance->definition->reward_games_min }}min</span>
+                                @endif
+                            </div>
+                        </div>
+                        
+                        <form method="POST" action="{{ route('app.bonuses.claim') }}" class="bonus-claim-form">
+                            @csrf
+                            <input type="hidden" name="instance_id" value="{{ $instance->id }}">
+                            <button type="submit" class="bonus-claim-btn">
+                                Claim
+                            </button>
+                        </form>
+                    </div>
+                @endforeach
+            </div>
+        @endif
+    </div>
+
+    {{-- Completed bonuses --}}
+    @if($myCompleted->isNotEmpty())
+        <div class="card">
+            <h3 class="card-title">Completed This Week</h3>
+            
+            <div class="bonus-list completed-list">
+                @foreach($myCompleted as $instance)
+                    <div class="bonus-item completed">
+                        <div class="bonus-check">✓</div>
+                        <div class="bonus-content">
+                            <div class="bonus-title">{{ $instance->definition?->title ?? 'Bonus' }}</div>
+                            <div class="bonus-rewards">
+                                @if($instance->definition?->reward_cents > 0)
+                                    <span class="reward earned">+${{ number_format($instance->definition->reward_cents / 100, 2) }}</span>
+                                @endif
+                            </div>
+                        </div>
+                    </div>
+                @endforeach
+            </div>
+        </div>
+    @endif
+
+    <div class="encouragement mt-4">
+        <span class="encouragement-emoji">⭐</span>
+        <p class="mb-0">Bonuses are a great way to earn extra rewards!</p>
+    </div>
+@endsection
+
+@push('head')
+<style>
+    /* Earnings card */
+    .earnings-card {
+        background: linear-gradient(135deg, var(--secondary), var(--secondary-dark, #4a7c6f));
+        color: white;
+    }
+
+    .earnings-amount {
+        font-size: 2.5rem;
+        font-weight: 700;
+        line-height: 1;
+    }
+
+    .earnings-label {
+        font-size: 0.9375rem;
+        opacity: 0.9;
+        margin-top: 0.25rem;
+    }
+
+    /* Bonus list */
+    .bonus-list {
+        display: flex;
+        flex-direction: column;
+        gap: 0.75rem;
+    }
+
+    .bonus-item {
+        display: flex;
+        align-items: center;
+        gap: 1rem;
+        padding: 1rem;
+        background: var(--gray-50);
+        border-radius: var(--border-radius);
+        transition: all 0.2s ease;
+    }
+
+    .bonus-item.available {
+        border-left: 4px solid var(--secondary);
+    }
+
+    .bonus-item.status-claimed {
+        border-left: 4px solid var(--info);
+    }
+
+    .bonus-item.status-pending {
+        border-left: 4px solid var(--warning);
+    }
+
+    .bonus-item.status-rejected {
+        border-left: 4px solid var(--attention);
+    }
+
+    .bonus-item.completed {
+        background: color-mix(in srgb, var(--success) 10%, white);
+        border-left: 4px solid var(--success);
+    }
+
+    .bonus-check {
+        flex-shrink: 0;
+        width: 32px;
+        height: 32px;
+        background: var(--success);
+        color: white;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-weight: 700;
+    }
+
+    .bonus-content {
+        flex: 1;
+        min-width: 0;
+    }
+
+    .bonus-title {
+        font-weight: 600;
+        font-size: 1rem;
+        color: var(--text-primary);
+        margin-bottom: 0.25rem;
+    }
+
+    .bonus-rewards {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.5rem;
+        font-size: 0.875rem;
+    }
+
+    .reward {
+        color: var(--text-secondary);
+    }
+
+    .reward.earned {
+        color: var(--success);
+        font-weight: 600;
+    }
+
+    .bonus-status {
+        margin-top: 0.5rem;
+    }
+
+    .bonus-claim-form {
+        flex-shrink: 0;
+        margin: 0;
+    }
+
+    .bonus-claim-btn {
+        padding: 0.5rem 1.25rem;
+        background: var(--secondary);
+        color: white;
+        border: none;
+        border-radius: var(--border-radius);
+        font-weight: 600;
+        font-size: 0.9375rem;
+        cursor: pointer;
+        transition: all 0.2s ease;
+    }
+
+    .bonus-claim-btn:hover {
+        background: var(--secondary-dark, #4a7c6f);
+    }
+
+    .bonus-action {
+        flex-shrink: 0;
+        padding: 0.5rem 1rem;
+        background: var(--primary);
+        color: white;
+        border-radius: var(--border-radius);
+        text-decoration: none;
+        font-weight: 600;
+        font-size: 0.875rem;
+    }
+
+    /* Badges */
+    .badge {
+        display: inline-block;
+        padding: 0.25rem 0.5rem;
+        border-radius: var(--border-radius);
+        font-size: 0.75rem;
+        font-weight: 600;
+    }
+
+    .badge-info {
+        background: color-mix(in srgb, var(--info) 15%, white);
+        color: var(--info-dark, #1565c0);
+    }
+
+    .badge-warning {
+        background: color-mix(in srgb, var(--warning) 15%, white);
+        color: var(--warning-dark);
+    }
+
+    .badge-attention {
+        background: color-mix(in srgb, var(--attention) 15%, white);
+        color: var(--attention-dark);
+    }
+
+    /* Empty state */
+    .empty-state {
+        text-align: center;
+        padding: 2rem 1rem;
+    }
+
+    .empty-icon {
+        font-size: 2.5rem;
+        display: block;
+        margin-bottom: 0.5rem;
+    }
+
+    .empty-state p {
+        color: var(--text-muted);
+    }
+
+    /* Completed list */
+    .completed-list .bonus-item {
+        opacity: 0.8;
+    }
+
+    .completed-list .bonus-title {
+        text-decoration: line-through;
+    }
+
+    /* Encouragement */
+    .encouragement {
+        text-align: center;
+        padding: 1rem;
+    }
+
+    .encouragement-emoji {
+        font-size: 2rem;
+        display: block;
+        margin-bottom: 0.5rem;
+    }
+
+    .encouragement p {
+        color: var(--text-secondary);
+    }
+</style>
+@endpush

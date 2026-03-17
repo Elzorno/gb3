@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Http\Controllers;
 
 use App\Domain\Submission\SubmissionService;
+use App\Models\Kid;
 use App\Models\Submission;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -39,12 +40,17 @@ class ReviewController extends Controller
             $q->where('kid_id', $kidId);
         }
 
-        return view('review.index', [
+        $kids = Kid::orderBy('display_order')->get();
+        $pendingCount = Submission::where('status', 'pending')->count();
+
+        return view('admin.reviews.index', [
             'rows' => $q->paginate($perPage)->withQueryString(),
             'status' => $status,
             'kind' => $kind,
             'kidId' => $kidId,
             'perPage' => $perPage,
+            'kids' => $kids,
+            'pendingCount' => $pendingCount,
         ]);
     }
 
@@ -62,6 +68,6 @@ class ReviewController extends Controller
             isset($v['note']) ? (string)$v['note'] : null,
         );
 
-        return redirect()->route('review.index')->with('status', 'Review decision saved.');
+        return redirect()->route('admin.reviews')->with('status', 'Review decision saved.');
     }
 }

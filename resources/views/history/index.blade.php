@@ -1,73 +1,123 @@
-<!doctype html>
-<html lang="en">
-<head>
-    <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>History</title>
-    <style>
-        body { font-family: ui-sans-serif, system-ui, sans-serif; margin: 2rem; }
-        .card { border: 1px solid #d4d4d8; border-radius: 12px; padding: 1rem; max-width: 920px; }
-        .item { border-top: 1px solid #e4e4e7; padding: .8rem 0; }
-        button { border: 1px solid #52525b; border-radius: 10px; background: #18181b; color: #fff; padding: .35rem .7rem; }
-    </style>
-</head>
-<body>
-<div class="card">
-    <h1>Your History</h1>
+@extends('layouts.kid')
 
-    <form method="get" action="{{ route('history.index') }}" style="display:flex; gap:.5rem; flex-wrap:wrap; margin-bottom:.75rem;">
-        <select name="status">
-            <option value="" {{ $status==='' ? 'selected' : '' }}>all status</option>
-            <option value="pending" {{ $status==='pending' ? 'selected' : '' }}>pending</option>
-            <option value="approved" {{ $status==='approved' ? 'selected' : '' }}>approved</option>
-            <option value="rejected" {{ $status==='rejected' ? 'selected' : '' }}>rejected</option>
-        </select>
-        <select name="kind">
-            <option value="" {{ $kind==='' ? 'selected' : '' }}>all kinds</option>
-            <option value="base" {{ $kind==='base' ? 'selected' : '' }}>base</option>
-            <option value="bonus" {{ $kind==='bonus' ? 'selected' : '' }}>bonus</option>
-        </select>
-        <select name="per_page">
-            <option value="10" {{ $perPage===10 ? 'selected' : '' }}>10</option>
-            <option value="20" {{ $perPage===20 ? 'selected' : '' }}>20</option>
-            <option value="50" {{ $perPage===50 ? 'selected' : '' }}>50</option>
-        </select>
-        <button type="submit">Apply</button>
-    </form>
+@section('title', 'History - Grounding Buddy')
 
-    @forelse($rows as $r)
-        <div class="item">
-            <div><strong>{{ $r->kind }}</strong> · {{ $r->status }} · {{ $r->submitted_at }}</div>
-            <div>slot_id={{ $r->slot_id }} · proof={{ $r->proof_path }}</div>
+@section('header-title', 'My History')
+
+@section('content')
+    {{-- Balance Summary --}}
+    <div class="card text-center">
+        <h3 class="card-title">Your Points</h3>
+        @php
+            $totalPoints = $rows->where('status', 'approved')->sum(function($r) {
+                return $r->points ?? 0;
+            });
+        @endphp
+        <div style="font-size: 2.5rem; font-weight: 700; color: var(--success);">
+            {{ number_format($totalPoints) }}
         </div>
-    @empty
-        <p>No submissions found.</p>
-    @endforelse
-
-    <div style="margin-top:.85rem;">
-        {{ $rows->links() }}
+        <p class="text-muted mb-0">total points earned</p>
     </div>
 
-    <h2 style="margin-top:1.2rem;">Infractions</h2>
-    @forelse($infractions as $e)
-        @php
-            $blocks = json_decode((string)($e->blocks_json ?? '{}'), true);
-            $blocks = is_array($blocks) ? $blocks : [];
-            $on = [];
-            foreach (['phone', 'games', 'other'] as $w) {
-                if ((int)($blocks[$w] ?? 0) === 1) {
-                    $on[] = $w;
-                }
-            }
-        @endphp
-        <div class="item">
-            <div><strong>{{ $e->definition?->label }}</strong> · strike {{ $e->strike_after }} · {{ $e->ts }}</div>
-            <div>days={{ $e->days_applied }} · mode={{ $e->mode }} · blocks={{ $on ? implode(', ', $on) : 'none' }}</div>
-            <div>review={{ $e->reviewed_at ? ('reviewed: ' . ($e->review_action ?: 'done')) : 'pending' }}</div>
+    {{-- Filter Form (collapsible on mobile) --}}
+    <details class="card" style="padding: var(--space-4);">
+        <summary style="cursor: pointer; font-weight: 600; margin: calc(-1 * var(--space-4)); padding: var(--space-4);">
+            Filter History
+        </summary>
+        <form method="GET" action="{{ route('app.history') }}" class="mt-4">
+            <div class="flex gap-2" style="flex-wrap: wrap;">
+                <select name="status" class="form-select" style="width: auto; height: auto; padding: var(--space-2);">
+                    <option value="" {{ $status === '' ? 'selected' : '' }}>All Status</option>
+                    <option value="pending" {{ $status === 'pending' ? 'selected' : '' }}>Pending</option>
+                    <option value="approved" {{ $status === 'approved' ? 'selected' : '' }}>Approved</option>
+                    <option value="rejected" {{ $status === 'rejected' ? 'selected' : '' }}>Rejected</option>
+                </select>
+                <select name="kind" class="form-select" style="width: auto; height: auto; padding: var(--space-2);">
+                    <option value="" {{ $kind === '' ? 'selected' : '' }}>All Types</option>
+                    <option value="base" {{ $kind === 'base' ? 'selected' : '' }}>Tasks</option>
+                    <option value="bonus" {{ $kind === 'bonus' ? 'selected' : '' }}>Bonuses</option>
+                </select>
+                <button type="submit" class="btn btn-secondary" style="padding: var(--space-2) var(--space-4);">
+                    Apply
+                </button>
+            </div>
+        </form>
+    </details>
+
+    {{-- Submissions List --}}
+    <div class="card">
+        <h3 class="card-title">Submissions</h3>
+        
+        @forelse($rows as $r)
+            <div class="ledger-entry">
+                <div>
+                    <div style="font-weight: 600;">
+                        {{ $r->kind === 'bonus' ? 'Bonus' : 'Task' }}
+                    </div>
+                    <div class="ledger-date">{{ \Carbon\Carbon::parse($r->submitted_at)->format('M j, g:ia') }}</div>
+                </div>
+                <div class="text-right">
+                    @if($r->status === 'approved')
+                        <span class="badge badge-success">Approved</span>
+                    @elseif($r->status === 'rejected')
+                        <span class="badge badge-attention">Try Again</span>
+                    @else
+                        <span class="badge badge-neutral">Pending</span>
+                    @endif
+                </div>
+            </div>
+        @empty
+            <div class="encouragement">
+                <span class="encouragement-emoji">📋</span>
+                <p>No submissions yet.</p>
+                <p class="text-muted" style="font-size: 0.875rem;">Complete tasks to see them here!</p>
+            </div>
+        @endforelse
+
+        @if($rows->hasPages())
+            <div class="mt-4 text-center">
+                {{ $rows->links() }}
+            </div>
+        @endif
+    </div>
+
+    {{-- Consequences Section --}}
+    @if($infractions->isNotEmpty())
+        <div class="card" style="border-left: 4px solid var(--attention);">
+            <h3 class="card-title">Recent Consequences</h3>
+            
+            @foreach($infractions as $e)
+                @php
+                    $blocks = json_decode((string)($e->blocks_json ?? '{}'), true);
+                    $blocks = is_array($blocks) ? $blocks : [];
+                    $on = [];
+                    foreach (['phone', 'games', 'other'] as $w) {
+                        if ((int)($blocks[$w] ?? 0) === 1) {
+                            $on[] = ucfirst($w);
+                        }
+                    }
+                @endphp
+                <div class="ledger-entry">
+                    <div>
+                        <div style="font-weight: 600;">
+                            {{ $e->definition?->label ?? 'Consequence' }}
+                        </div>
+                        <div class="ledger-date">
+                            {{ $e->days_applied }} day{{ $e->days_applied != 1 ? 's' : '' }}
+                            @if(!empty($on))
+                                · {{ implode(', ', $on) }}
+                            @endif
+                        </div>
+                    </div>
+                    <div class="text-right">
+                        @if($e->reviewed_at)
+                            <span class="badge badge-neutral">Reviewed</span>
+                        @else
+                            <span class="badge badge-attention">Active</span>
+                        @endif
+                    </div>
+                </div>
+            @endforeach
         </div>
-    @empty
-        <p>No infractions found.</p>
-    @endforelse
-</div>
-</body>
-</html>
+    @endif
+@endsection

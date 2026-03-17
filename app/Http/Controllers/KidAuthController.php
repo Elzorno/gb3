@@ -71,13 +71,13 @@ class KidAuthController extends Controller
         $limiter->clear($lockKey);
         $this->kidSessions->loginKid($request, (int)$kid->id);
 
-        return redirect()->route('rewrite.home')->with('status', 'Kid session started.');
+        return redirect()->route('app.today')->with('status', 'Welcome back, ' . $kid->name . '!');
     }
 
     public function logout(Request $request): RedirectResponse
     {
         $this->kidSessions->logoutKid($request);
 
-        return redirect()->route('kid.login')->with('status', 'Logged out.');
+        return redirect()->route('app.login')->with('status', 'See you later!');
     }
 }

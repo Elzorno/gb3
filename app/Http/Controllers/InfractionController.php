@@ -20,7 +20,7 @@ class InfractionController extends Controller
 
     public function index(Request $request): View
     {
-        return view('infraction.index', [
+        return view('admin.infractions.index', [
             'kids' => Kid::query()->orderBy('sort_order')->orderBy('id')->get(),
             'defs' => $this->infractions->activeDefinitions(),
             'events' => InfractionEvent::query()
@@ -40,6 +40,9 @@ class InfractionController extends Controller
             'note' => ['nullable', 'string', 'max:300'],
         ]);
 
+        $kid = Kid::findOrFail($v['kid_id']);
+        $def = $this->infractions->activeDefinitions()->firstWhere('id', $v['infraction_def_id']);
+        
         $this->infractions->apply(
             (int)$v['kid_id'],
             (int)$v['infraction_def_id'],
@@ -48,6 +51,7 @@ class InfractionController extends Controller
             0,
         );
 
-        return redirect()->route('infraction.index')->with('status', 'Infraction applied.');
+        return redirect()->route('admin.infractions')
+            ->with('success', "Applied \"{$def->label}\" consequence to {$kid->display_name}.");
     }
 }
