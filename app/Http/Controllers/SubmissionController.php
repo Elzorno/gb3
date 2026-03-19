@@ -68,7 +68,10 @@ class SubmissionController extends Controller
         $v = $request->validate([
             'slot_id' => ['required', 'integer', 'min:1'],
             'day' => ['required', 'date_format:Y-m-d'],
-            'photo' => ['required', 'image', 'mimes:jpg,jpeg,png,gif,webp,heic,heif', 'max:10240'],
+            'photo' => ['required', 'image', 'mimes:jpg,jpeg,png,gif,webp,heic,heif', 'max:20480'],
+        ], [
+            'photo.required' => 'Photo upload failed — the image may be too large. Try taking the photo in normal mode instead of 48MP.',
+            'photo.max' => 'Photo is too large (max 20 MB). Try taking the photo in normal mode.',
         ]);
 
         // Handle file upload

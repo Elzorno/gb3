@@ -88,9 +88,10 @@
                                 @csrf
                                 <input type="hidden" name="instance_id" value="{{ $instance->id }}">
                                 <label class="bonus-action" style="cursor:pointer;">
-                                    <input type="file" name="photo" accept="image/*" capture="environment" style="display:none;" onchange="this.form.submit()">
+                                    <input type="file" name="photo" accept="image/*" capture="environment" style="display:none;" onchange="handleBonusPhoto(this)">
                                     📸 Submit Proof
                                 </label>
+                                <span class="bonus-compress-status" style="display:none;font-size:0.8rem;color:var(--text-muted);">Compressing…</span>
                             </form>
                         @endif
                     </div>
@@ -438,4 +439,30 @@
         border-color: rgba(255,255,255,0.5);
     }
 </style>
+@endpush
+
+@push('scripts')
+<script>
+function handleBonusPhoto(input) {
+    var file = input.files[0];
+    if (!file) return;
+    if (file.size > 20 * 1024 * 1024) {
+        alert('Image is too large (max 20MB)');
+        input.value = '';
+        return;
+    }
+    var form = input.closest('form');
+    var status = form.querySelector('.bonus-compress-status');
+    var label = form.querySelector('.bonus-action');
+    if (status) status.style.display = 'inline';
+    if (label) label.style.display = 'none';
+    compressImage(file, 1920, 0.85).then(function(result) {
+        // Swap compressed file into the input and submit normally
+        var dt = new DataTransfer();
+        dt.items.add(result);
+        input.files = dt.files;
+        form.submit();
+    });
+}
+</script>
 @endpush

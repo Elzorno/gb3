@@ -376,53 +376,54 @@
 @push('scripts')
 <script>
 document.addEventListener('DOMContentLoaded', function() {
-    const photoInput = document.getElementById('photo');
-    const photoPrompt = document.getElementById('photoPrompt');
-    const photoPreview = document.getElementById('photoPreview');
-    const previewImg = document.getElementById('previewImg');
-    const submitBtn = document.getElementById('submitBtn');
+    var photoInput = document.getElementById('photo');
+    var photoPrompt = document.getElementById('photoPrompt');
+    var photoPreview = document.getElementById('photoPreview');
+    var previewImg = document.getElementById('previewImg');
+    var submitBtn = document.getElementById('submitBtn');
+    var compressedFile = null;
     
     if (photoInput) {
         photoInput.addEventListener('change', function(e) {
-            const file = e.target.files[0];
-            
-            if (file) {
-                // Validate file type
-                if (!file.type.startsWith('image/')) {
-                    alert('Please select an image file');
-                    photoInput.value = '';
-                    return;
-                }
-                
-                // Validate file size (10MB max)
-                if (file.size > 10 * 1024 * 1024) {
-                    alert('Image is too large. Please choose a smaller image (max 10MB)');
-                    photoInput.value = '';
-                    return;
-                }
-                
-                // Show preview
-                const reader = new FileReader();
-                reader.onload = function(event) {
-                    previewImg.src = event.target.result;
-                    photoPrompt.style.display = 'none';
-                    photoPreview.style.display = 'block';
-                    submitBtn.disabled = false;
-                };
-                reader.readAsDataURL(file);
-            } else {
-                // No file selected
+            var file = e.target.files[0];
+            if (!file) {
                 photoPrompt.style.display = 'flex';
                 photoPreview.style.display = 'none';
                 submitBtn.disabled = true;
+                compressedFile = null;
+                return;
             }
+            if (!file.type.startsWith('image/')) {
+                alert('Please select an image file');
+                photoInput.value = '';
+                return;
+            }
+            if (file.size > 20 * 1024 * 1024) {
+                alert('Image is too large. Please choose a smaller image (max 20MB)');
+                photoInput.value = '';
+                return;
+            }
+            submitBtn.disabled = true;
+            submitBtn.textContent = 'Compressing...';
+            compressImage(file, 1920, 0.85).then(function(result) {
+                compressedFile = result;
+                // Swap compressed file into the input
+                var dt = new DataTransfer();
+                dt.items.add(result);
+                photoInput.files = dt.files;
+                previewImg.src = URL.createObjectURL(result);
+                photoPrompt.style.display = 'none';
+                photoPreview.style.display = 'block';
+                submitBtn.disabled = false;
+                submitBtn.innerHTML = '<span class="btn-icon">✓</span> Submit for Review';
+            });
         });
     }
-    
+
     // Prevent double submission
-    const submitForm = document.getElementById('submitForm');
+    var submitForm = document.getElementById('submitForm');
     if (submitForm) {
-        submitForm.addEventListener('submit', function(e) {
+        submitForm.addEventListener('submit', function() {
             submitBtn.disabled = true;
             submitBtn.textContent = 'Submitting...';
         });

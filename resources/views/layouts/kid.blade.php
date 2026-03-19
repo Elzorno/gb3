@@ -330,10 +330,52 @@
             item.addEventListener('click', function() {
                 if (!this.classList.contains('completed')) {
                     this.classList.add('completing');
-                    // Let parent form/handler deal with actual completion
                 }
             });
         });
     });
+
+    /**
+     * Compress an image file using Canvas, returns a Promise<File>.
+     * Resizes to maxDim on longest edge, re-encodes as JPEG at given quality.
+     */
+    function compressImage(file, maxDim, quality) {
+        maxDim = maxDim || 1920;
+        quality = quality || 0.85;
+        return new Promise(function(resolve, reject) {
+            // Skip non-image or already-small files
+            if (!file.type.startsWith('image/') || file.size < 500 * 1024) {
+                resolve(file);
+                return;
+            }
+            var img = new Image();
+            img.onload = function() {
+                var w = img.width, h = img.height;
+                if (w <= maxDim && h <= maxDim && file.size < 1024 * 1024) {
+                    URL.revokeObjectURL(img.src);
+                    resolve(file);
+                    return;
+                }
+                // Scale down
+                if (w > h) {
+                    if (w > maxDim) { h = Math.round(h * maxDim / w); w = maxDim; }
+                } else {
+                    if (h > maxDim) { w = Math.round(w * maxDim / h); h = maxDim; }
+                }
+                var canvas = document.createElement('canvas');
+                canvas.width = w;
+                canvas.height = h;
+                canvas.getContext('2d').drawImage(img, 0, 0, w, h);
+                URL.revokeObjectURL(img.src);
+                canvas.toBlob(function(blob) {
+                    if (!blob) { resolve(file); return; }
+                    var name = file.name.replace(/\.[^.]+$/, '') + '.jpg';
+                    resolve(new File([blob], name, { type: 'image/jpeg', lastModified: Date.now() }));
+                }, 'image/jpeg', quality);
+            };
+            img.onerror = function() { resolve(file); };
+            img.src = URL.createObjectURL(file);
+        });
+    }
 </script>
 @endpush
