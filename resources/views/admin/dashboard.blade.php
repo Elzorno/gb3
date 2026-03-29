@@ -27,7 +27,14 @@
             </div>
             <div class="stat-label">Pending Reviews</div>
         </a>
-        
+
+        <a href="{{ route('admin.reviews') }}" class="stat-card stat-card-link" style="{{ $pendingPayoutCount > 0 ? 'border:1px solid var(--secondary);background:color-mix(in srgb, var(--secondary) 12%, white);' : '' }}">
+            <div class="stat-value" style="color: {{ $pendingPayoutCount > 0 ? 'var(--secondary)' : 'var(--success)' }}">
+                {{ $pendingPayoutCount }}
+            </div>
+            <div class="stat-label">Pending Payouts</div>
+        </a>
+
         <div class="stat-card">
             <div class="stat-value">{{ $todaySubmissions }}</div>
             <div class="stat-label">Today's Activity</div>
@@ -101,7 +108,7 @@
         <div class="card mb-4" style="border-left: 4px solid var(--secondary);">
             <div class="card-header">
                 <h3 class="card-title">Payout Requests</h3>
-                <a href="{{ route('admin.payouts') }}" class="btn btn-secondary btn-sm">Review All</a>
+                <a href="{{ route('admin.reviews') }}" class="btn btn-secondary btn-sm">Review All</a>
             </div>
             @foreach($pendingPayouts as $payout)
                 <div class="dash-review-item flex justify-between items-center">

@@ -5,10 +5,8 @@ declare(strict_types=1);
 namespace App\Http\Controllers;
 
 use App\Domain\Payout\PayoutService;
-use App\Models\Kid;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
-use Illuminate\View\View;
 
 class PayoutController extends Controller
 {
@@ -38,20 +36,6 @@ class PayoutController extends Controller
     }
 
     /**
-     * Admin: List pending payout requests.
-     */
-    public function adminIndex(Request $request): View
-    {
-        $pendingPayouts = $this->payout->listPending();
-        $kids = Kid::orderBy('sort_order')->get();
-
-        return view('admin.payouts.index', [
-            'payouts' => $pendingPayouts,
-            'kids' => $kids,
-        ]);
-    }
-
-    /**
      * Admin: Approve or deny a payout request.
      */
     public function adminDecide(Request $request): RedirectResponse
@@ -75,10 +59,10 @@ class PayoutController extends Controller
                 $message = 'Payout request denied.';
             }
 
-            return redirect()->route('admin.payouts')
+            return redirect()->route('admin.reviews')
                 ->with('status', $message);
         } catch (\RuntimeException $e) {
-            return redirect()->route('admin.payouts')
+            return redirect()->route('admin.reviews')
                 ->with('error', $e->getMessage());
         }
     }

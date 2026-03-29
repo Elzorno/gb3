@@ -1,18 +1,88 @@
 @extends('layouts.admin')
 
-@section('title', 'Review Submissions - Grounding Buddy')
+@section('title', 'Reviews - Grounding Buddy')
 
-@section('header-title', 'Review Submissions')
+@section('header-title', 'Reviews')
 
 @section('header-subtitle')
-    @if($pendingCount > 0)
-        <span class="badge badge-warning">{{ $pendingCount }} pending</span>
+    @if($pendingWorkCount > 0)
+        <span class="badge badge-warning">{{ $pendingWorkCount }} pending</span>
     @else
         <span class="badge badge-success">All caught up!</span>
     @endif
 @endsection
 
 @section('content')
+    @if($pendingPayoutCount > 0)
+        <div class="card mb-4" style="border-left: 4px solid var(--secondary);">
+            <div class="card-header">
+                <h3 class="card-title">Payout Requests Waiting</h3>
+                <span class="badge badge-info">{{ $pendingPayoutCount }} pending</span>
+            </div>
+            <div class="review-list">
+                @foreach($pendingPayouts as $payout)
+                    <div class="card review-card payout-review-card mb-3" data-payout-id="{{ $payout->id }}">
+                        <div class="review-header flex justify-between items-start mb-3">
+                            <div>
+                                <span class="badge badge-info">Payout</span>
+                                <span class="badge badge-warning">Pending</span>
+                            </div>
+                            <span class="text-muted text-sm">
+                                {{ $payout->requested_at?->diffForHumans() ?? 'Unknown time' }}
+                            </span>
+                        </div>
+
+                        <div class="review-content flex gap-4">
+                            <div class="review-proof payout-review-summary">
+                                <div class="payout-review-icon">💵</div>
+                            </div>
+
+                            <div class="review-details flex-1">
+                                <h3 class="card-title mb-1">
+                                    {{ $payout->kid?->display_name ?? 'Unknown' }}
+                                </h3>
+                                <p class="text-muted mb-2">Requested payout from earned bank</p>
+                                <div class="payout-amounts">
+                                    @if($payout->requested_cents > 0)
+                                        <span class="badge badge-info">${{ number_format($payout->requested_cents / 100, 2) }}</span>
+                                    @endif
+                                    @if($payout->requested_phone_min > 0)
+                                        <span class="badge badge-info">{{ $payout->requested_phone_min }}m phone</span>
+                                    @endif
+                                    @if($payout->requested_games_min > 0)
+                                        <span class="badge badge-info">{{ $payout->requested_games_min }}m games</span>
+                                    @endif
+                                    @if($payout->requested_other_min > 0)
+                                        <span class="badge badge-info">{{ $payout->requested_other_min }}m other</span>
+                                    @endif
+                                </div>
+                            </div>
+
+                            <div class="review-actions flex flex-col gap-2" style="flex: 0 0 auto;">
+                                <form method="POST" action="{{ route('admin.payouts.decide') }}" class="mb-0">
+                                    @csrf
+                                    <input type="hidden" name="payout_id" value="{{ $payout->id }}">
+                                    <input type="hidden" name="decision" value="approved">
+                                    <button type="submit" class="btn btn-success btn-sm w-full">
+                                        Approve
+                                    </button>
+                                </form>
+
+                                <button
+                                    type="button"
+                                    class="btn btn-attention btn-sm"
+                                    onclick="showPayoutDenyModal({{ $payout->id }}, '{{ addslashes($payout->kid?->display_name ?? 'Unknown') }}')"
+                                >
+                                    Deny
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                @endforeach
+            </div>
+        </div>
+    @endif
+
     {{-- Filter bar --}}
     <div class="card mb-4">
         <form method="GET" action="{{ route('admin.reviews') }}" class="flex flex-wrap gap-4 items-end">
@@ -224,12 +294,72 @@
         </div>
     </div>
 
+    <div id="payout-deny-modal" class="modal" style="display: none;">
+        <div class="modal-backdrop" onclick="hidePayoutDenyModal()"></div>
+        <div class="modal-content card">
+            <h3 class="card-title">Deny Payout Request</h3>
+            <p class="text-muted mb-3">
+                Denying payout request from <strong id="payout-deny-kid-name"></strong>
+            </p>
+
+            <form method="POST" action="{{ route('admin.payouts.decide') }}">
+                @csrf
+                <input type="hidden" name="payout_id" id="payout-deny-id" value="">
+                <input type="hidden" name="decision" value="denied">
+
+                <div class="form-group">
+                    <label for="payout-deny-note" class="form-label">Reason</label>
+                    <textarea
+                        name="note"
+                        id="payout-deny-note"
+                        class="form-input"
+                        rows="3"
+                        placeholder="Optional note for this payout request..."
+                    ></textarea>
+                </div>
+
+                <div class="flex gap-3 justify-end">
+                    <button type="button" class="btn btn-secondary" onclick="hidePayoutDenyModal()">
+                        Cancel
+                    </button>
+                    <button type="submit" class="btn btn-attention">
+                        Deny Request
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
     <style>
         .review-card {
             transition: box-shadow 0.2s ease;
         }
         .review-card:hover {
             box-shadow: var(--shadow-md);
+        }
+
+        .payout-review-card {
+            border-left: 4px solid var(--secondary);
+        }
+
+        .payout-review-summary {
+            flex: 0 0 150px;
+            min-height: 150px;
+            border-radius: var(--border-radius);
+            background: color-mix(in srgb, var(--secondary) 10%, white);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .payout-review-icon {
+            font-size: 3rem;
+        }
+
+        .payout-amounts {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.5rem;
         }
         
         .modal {
@@ -300,6 +430,17 @@
             document.getElementById('reject-modal').style.display = 'none';
         }
 
+        function showPayoutDenyModal(payoutId, kidName) {
+            document.getElementById('payout-deny-id').value = payoutId;
+            document.getElementById('payout-deny-kid-name').textContent = kidName;
+            document.getElementById('payout-deny-note').value = '';
+            document.getElementById('payout-deny-modal').style.display = 'flex';
+        }
+
+        function hidePayoutDenyModal() {
+            document.getElementById('payout-deny-modal').style.display = 'none';
+        }
+
         // Wire up reject template buttons
         document.querySelectorAll('.reject-tpl').forEach(function(btn) {
             btn.addEventListener('click', function() {
@@ -313,6 +454,7 @@
         document.addEventListener('keydown', function(e) {
             if (e.key === 'Escape') {
                 hideRejectModal();
+                hidePayoutDenyModal();
             }
         });
     </script>

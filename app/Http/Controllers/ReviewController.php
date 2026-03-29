@@ -6,6 +6,7 @@ namespace App\Http\Controllers;
 
 use App\Domain\Submission\SubmissionService;
 use App\Models\Kid;
+use App\Models\PayoutRequest;
 use App\Models\Submission;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -42,6 +43,13 @@ class ReviewController extends Controller
 
         $kids = Kid::orderBy('sort_order')->get();
         $pendingCount = Submission::where('status', 'pending')->count();
+        $pendingPayoutCount = PayoutRequest::where('status', 'pending')->count();
+        $pendingPayouts = PayoutRequest::query()
+            ->with('kid')
+            ->where('status', 'pending')
+            ->orderBy('requested_at')
+            ->get();
+        $pendingWorkCount = $pendingCount + $pendingPayoutCount;
 
         return view('admin.reviews.index', [
             'rows' => $q->paginate($perPage)->withQueryString(),
@@ -51,6 +59,9 @@ class ReviewController extends Controller
             'perPage' => $perPage,
             'kids' => $kids,
             'pendingCount' => $pendingCount,
+            'pendingPayoutCount' => $pendingPayoutCount,
+            'pendingPayouts' => $pendingPayouts,
+            'pendingWorkCount' => $pendingWorkCount,
         ]);
     }
 

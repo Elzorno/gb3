@@ -122,7 +122,6 @@ Route::prefix('admin')->name('admin.')->middleware('admin.auth')->group(function
     Route::delete('/definitions/infraction/{infraction}', [DefinitionController::class, 'destroyInfraction'])->name('definitions.infraction.destroy');
     
     // Payout requests management
-    Route::get('/payouts', [PayoutController::class, 'adminIndex'])->name('payouts');
     Route::post('/payouts/decide', [PayoutController::class, 'adminDecide'])->name('payouts.decide');
     
     // Settings
