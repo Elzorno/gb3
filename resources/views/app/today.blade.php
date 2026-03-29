@@ -7,476 +7,474 @@
 @endsection
 
 @section('content')
-    {{-- Consequence details banner (shown when grounded) --}}
-    @if($isGrounded)
-        @php $priv = $kid?->privileges; @endphp
-        <div class="consequence-banner mb-4">
-            <div class="consequence-header">
-                <span class="consequence-icon" aria-hidden="true">⏳</span>
-                <h2 class="consequence-title">Current Consequence</h2>
-            </div>
-            
-            @if($activeConsequence)
-                {{-- Named consequence with details --}}
-                <div class="consequence-name">{{ $activeConsequence['label'] }}</div>
-                
-                @if(!empty($activeConsequence['pausedPrivileges']))
-                    <div class="consequence-section">
-                        <div class="consequence-section-label">What is paused</div>
-                        <div class="consequence-paused-list">
-                            @foreach($activeConsequence['pausedPrivileges'] as $privilege)
-                                <span class="consequence-paused-item">{{ $privilege }}</span>
-                            @endforeach
-                        </div>
-                    </div>
-                @endif
-                
-                @if($activeConsequence['reviewText'])
-                    <div class="consequence-section">
-                        <div class="consequence-section-label">Next review</div>
-                        <div class="consequence-review">{{ $activeConsequence['reviewText'] }}</div>
-                    </div>
-                @endif
-                
-                <div class="consequence-section consequence-nextstep">
-                    <div class="consequence-section-label">How to get back on track</div>
-                    <p class="consequence-nextstep-text">{{ $activeConsequence['nextStepText'] }}</p>
-                </div>
-            @else
-                {{-- Fallback: show privilege lock details without specific consequence info --}}
-                <p class="consequence-text mb-2">
-                    Keep completing your tasks — each day helps you get back on track.
-                </p>
-                @if($priv)
-                    <div class="consequence-section">
-                        <div class="consequence-section-label">What is paused</div>
-                        <div class="consequence-paused-list">
-                            @foreach(['phone' => 'Phone', 'games' => 'Games', 'other' => 'Other screen time'] as $type => $label)
-                                @if($priv->{$type . '_locked'})
-                                    <span class="consequence-paused-item">
-                                        {{ $label }}
-                                        @if($priv->{$type . '_locked_until'})
-                                            — review {{ $priv->{$type . '_locked_until'}->diffForHumans() }}
-                                        @endif
-                                    </span>
-                                @endif
-                            @endforeach
-                        </div>
-                    </div>
-                @endif
-            @endif
-        </div>
-    @endif
+    @php
+        $total = $assignments->count();
+        $completed = $assignments->where('status', 'approved')->count();
+        $pending = $assignments->where('status', 'pending')->count();
+        $actionableAssignments = $assignments->filter(fn ($assignment) => !in_array($assignment->status, ['approved', 'pending'], true))->values();
+        $nextAssignment = $actionableAssignments->first();
+        $percent = $total > 0 ? (int) round(($completed / $total) * 100) : 0;
+        $progressLabel = $total > 0 ? "{$completed} of {$total} complete" : 'Nothing to complete today';
 
-    {{-- Daily Progress --}}
-    <div class="card text-center mb-4">
-        <p class="text-muted mb-2">{{ $date->format('l, F j') }}</p>
-        
-        @if (!$isWeekday)
-            <div class="encouragement">
-                <span class="encouragement-emoji">🎉</span>
-                <p class="mb-0">It's the weekend! Enjoy your day.</p>
-            </div>
-        @elseif ($assignments->isEmpty())
-            <div class="encouragement">
-                <span class="encouragement-emoji">✨</span>
-                <p class="mb-0">No chores assigned today. You're free!</p>
-            </div>
-        @else
-            {{-- Progress ring --}}
-            @php
-                $total = $assignments->count();
-                $completed = $assignments->where('status', 'approved')->count();
-                $pending = $assignments->where('status', 'pending')->count();
-                $percent = $total > 0 ? round(($completed / $total) * 100) : 0;
-                $circumference = 2 * 3.14159 * 45;
-                $dashOffset = $circumference - ($circumference * $percent / 100);
-            @endphp
-            
-            <div class="progress-ring mb-3">
-                <svg width="140" height="140" class="progress-ring-circle">
-                    <circle class="progress-ring-bg" cx="70" cy="70" r="45"></circle>
-                    <circle 
-                        class="progress-ring-progress" 
-                        cx="70" 
-                        cy="70" 
-                        r="45"
-                        stroke-dasharray="{{ $circumference }}"
-                        stroke-dashoffset="{{ $dashOffset }}"
-                        transform="rotate(-90 70 70)"
-                    ></circle>
-                    <text x="70" y="65" text-anchor="middle" class="progress-ring-text">{{ $completed }}/{{ $total }}</text>
-                    <text x="70" y="85" text-anchor="middle" class="progress-ring-label">done</text>
-                </svg>
-            </div>
-            
-            @if($percent == 100)
-                <div class="encouragement success-encouragement">
-                    <span class="encouragement-emoji">🌟</span>
-                    <p class="mb-0">Amazing! All tasks completed today!</p>
+        $pausedPrivileges = $activeConsequence['pausedPrivileges'] ?? [];
+        if ($isGrounded && empty($pausedPrivileges) && $kid?->privileges) {
+            foreach (['phone' => 'Phone', 'games' => 'Games', 'other' => 'Other screen time'] as $type => $label) {
+                if ($kid->privileges->{$type . '_locked'}) {
+                    $pausedPrivileges[] = $label;
+                }
+            }
+        }
+
+        $supportCopy = $activeConsequence['nextStepText'] ?? 'Keep going one calm step at a time.';
+        $reviewCopy = $activeConsequence['reviewText'] ?? ($pending > 0 ? ($pending === 1 ? '1 task is waiting for review' : "{$pending} tasks are waiting for review") : 'Nothing waiting right now');
+
+        if (!$isWeekday) {
+            $heroTitle = 'Today can be lighter';
+            $heroBody = "It's the weekend. Check in only if your family asked for something specific.";
+        } elseif ($total === 0) {
+            $heroTitle = 'Your plan is open';
+            $heroBody = 'No chores are assigned for today yet. You can still peek at the week if that helps you orient.';
+        } elseif ($percent === 100) {
+            $heroTitle = 'You are on track';
+            $heroBody = 'Everything for today is complete. The next step is simply to enjoy the rest of your day.';
+        } elseif ($nextAssignment) {
+            $heroTitle = 'One calm step at a time';
+            $heroBody = 'Start with the next routine below. Your family sees the same plan, so expectations stay predictable.';
+        } else {
+            $heroTitle = 'You are on track';
+            $heroBody = 'Your remaining task is already in review. You do not need to repeat anything while you wait.';
+        }
+    @endphp
+
+    <section class="today-shell">
+        <section class="today-hero-card">
+            <p class="today-eyebrow">Today</p>
+            <h2 class="today-hero-title">{{ $heroTitle }}</h2>
+            <p class="today-hero-copy">{{ $heroBody }}</p>
+
+            <div class="today-progress">
+                <div class="today-progress-track" aria-hidden="true">
+                    <span style="width: {{ $percent }}%"></span>
                 </div>
-            @elseif($pending > 0)
-                <p class="text-muted mb-0">{{ $pending }} task{{ $pending > 1 ? 's' : '' }} waiting for review</p>
-            @endif
+                <span>{{ $date->format('l, F j') }} · {{ $progressLabel }}</span>
+            </div>
+        </section>
+
+        @if($nextAssignment)
+            <section class="today-primary-card">
+                <div class="section-header">
+                    <h3>Next calm step</h3>
+                    <span class="soft-badge">now</span>
+                </div>
+
+                <strong class="primary-task-title">{{ $nextAssignment->slot?->title ?? 'Task' }}</strong>
+                @if($nextAssignment->status === 'rejected' && !empty($rejectionNotes[$nextAssignment->slot_id]))
+                    <p class="primary-task-copy">{{ $rejectionNotes[$nextAssignment->slot_id] }}</p>
+                @else
+                    <p class="primary-task-copy">When you finish, send a photo so your grown-up can review it.</p>
+                @endif
+
+                <a href="{{ route('app.submit') }}?slot={{ $nextAssignment->slot_id }}" class="btn btn-primary btn-block">
+                    {{ $nextAssignment->status === 'rejected' ? 'Try again and submit' : 'Open checklist' }}
+                </a>
+            </section>
         @endif
-    </div>
 
-    {{-- Task List --}}
-    @if ($isWeekday && $assignments->isNotEmpty())
-        <div class="card mb-4">
-            <h3 class="card-title">Today's Chores</h3>
-            
-            <ul class="checklist">
-                @foreach($assignments as $a)
+        <section class="today-chip-row" aria-label="Supportive status details">
+            <div class="today-chip">
+                <strong>{{ $isGrounded ? 'Paused' : 'Progress' }}</strong>
+                <span>
+                    @if($isGrounded)
+                        {{ !empty($pausedPrivileges) ? implode(', ', $pausedPrivileges) : 'Privileges paused' }}
+                    @else
+                        {{ $progressLabel }}
+                    @endif
+                </span>
+            </div>
+            <div class="today-chip">
+                <strong>{{ $isGrounded ? 'Review' : 'Waiting' }}</strong>
+                <span>{{ $reviewCopy }}</span>
+            </div>
+            <div class="today-chip">
+                <strong>Support</strong>
+                <span>{{ $supportCopy }}</span>
+            </div>
+        </section>
+
+        @if($isWeekday && $total > 0)
+            <section class="today-list-card">
+                <div class="section-header">
+                    <h3>My rhythm</h3>
+                    <span class="soft-badge">steady</span>
+                </div>
+
+                @foreach($assignments as $assignment)
                     @php
-                        $isComplete = $a->status === 'approved';
-                        $isPending = $a->status === 'pending';
-                        $isRejected = $a->status === 'rejected';
+                        $status = $assignment->status;
+                        $isRejected = $status === 'rejected';
+                        $statusLabel = match ($status) {
+                            'approved' => 'Done',
+                            'pending' => 'Waiting',
+                            'rejected' => 'Try again',
+                            default => 'Now',
+                        };
+                        $statusClass = match ($status) {
+                            'approved' => 'done',
+                            'pending' => 'waiting',
+                            'rejected' => 'retry',
+                            default => 'current',
+                        };
+                        $metaText = match ($status) {
+                            'approved' => 'Reviewed and complete',
+                            'pending' => 'Sent and waiting for review',
+                            'rejected' => $rejectionNotes[$assignment->slot_id] ?? 'Take another pass and submit when ready',
+                            default => 'Ready when you are',
+                        };
                     @endphp
-                    <li class="checklist-item {{ $isComplete ? 'completed' : '' }} {{ $isPending ? 'pending' : '' }} {{ $isRejected ? 'rejected' : '' }}">
-                        <div class="checklist-checkbox">
-                            @if($isComplete)
-                                ✓
-                            @elseif($isPending)
-                                ⏳
-                            @elseif($isRejected)
-                                ↩
-                            @endif
+
+                    <div class="today-task {{ $statusClass }}">
+                        <span class="today-task-mark">{{ $statusLabel }}</span>
+                        <div class="today-task-body">
+                            <strong>{{ $assignment->slot?->title ?? 'Task' }}</strong>
+                            <p>{{ $metaText }}</p>
                         </div>
-                        <div class="checklist-content">
-                            <div class="checklist-title">{{ $a->slot?->title ?? 'Task' }}</div>
-                            <div class="checklist-meta">
-                                @if($isComplete)
-                                    <span class="text-success">Done — nice work!</span>
-                                @elseif($isPending)
-                                    <span class="text-warning">Waiting for review</span>
-                                @elseif($isRejected)
-                                    <span class="text-attention">Try again</span>
-                                    @if(!empty($rejectionNotes[$a->slot_id]))
-                                        <div class="rejection-hint">{{ $rejectionNotes[$a->slot_id] }}</div>
-                                    @endif
-                                @else
-                                    <span>Ready to do</span>
-                                @endif
-                            </div>
-                        </div>
-                        
-                        @if(!$isComplete && !$isPending)
-                            <a href="{{ route('app.submit') }}?slot={{ $a->slot_id }}" class="checklist-action">
-                                Submit
+                        @if(!in_array($status, ['approved', 'pending'], true))
+                            <a href="{{ route('app.submit') }}?slot={{ $assignment->slot_id }}" class="task-link">
+                                {{ $isRejected ? 'Resubmit' : 'Start' }}
                             </a>
                         @endif
-                    </li>
+                    </div>
                 @endforeach
-            </ul>
-        </div>
-
-        {{-- Submit proof button (prominent CTA) --}}
-        @php
-            $incomplete = $assignments->whereNotIn('status', ['approved', 'pending'])->count();
-        @endphp
-        @if($incomplete > 0)
-            <a href="{{ route('app.submit') }}" class="big-action-btn">
-                <span class="big-action-btn-icon">📸</span>
-                <span class="big-action-btn-text">Submit Completed Chore</span>
-                <span class="big-action-btn-sub">Take a photo showing your work</span>
-            </a>
+            </section>
+        @else
+            <section class="today-list-card">
+                <div class="section-header">
+                    <h3>My rhythm</h3>
+                    <span class="soft-badge">light</span>
+                </div>
+                <p class="empty-state mb-0">
+                    @if(!$isWeekday)
+                        Weekend days can stay simple. Check the week view only if you want a bigger picture.
+                    @else
+                        No chores are listed for today.
+                    @endif
+                </p>
+            </section>
         @endif
-    @endif
 
-    {{-- Positive reinforcement --}}
-    @if (!$isGrounded)
-        <div class="encouragement mt-4">
-            <span class="encouragement-emoji">⭐</span>
-            <p class="mb-0">You're doing great! Keep it up!</p>
-        </div>
-    @endif
+        <details class="today-disclosure">
+            <summary>Family context</summary>
+            <div class="today-disclosure-panel">
+                <p>Use the shared week only when it helps you orient. You do not need to hold the whole plan in your head all at once.</p>
+                <div class="disclosure-actions">
+                    <a href="{{ route('app.rules') }}" class="btn btn-secondary btn-block">See My Week</a>
+                </div>
+            </div>
+        </details>
+
+        <details class="today-disclosure caregiver-note {{ $isGrounded ? 'open-tone' : '' }}">
+            <summary>Caregiver note</summary>
+            <div class="today-disclosure-panel">
+                <p class="mb-0">
+                    @if($isGrounded)
+                        {{ $activeConsequence['reviewText'] ?? 'A review is coming soon.' }} Keep following the plan and check in calmly when today&apos;s work is done.
+                    @elseif($pending > 0)
+                        Something is already waiting for review. You can pause here until a grown-up checks it.
+                    @else
+                        Keep moving one step at a time. You do not need to rush.
+                    @endif
+                </p>
+            </div>
+        </details>
+
+        @if(!$isGrounded)
+            <section class="today-encouragement">
+                <p class="mb-0">You&apos;re doing great. Small steady steps count.</p>
+            </section>
+        @endif
+    </section>
 @endsection
 
 @push('head')
 <style>
-    /* Consequence banner - calm, informative display */
-    .consequence-banner {
-        padding: 1rem;
-        border-radius: var(--border-radius-lg);
-        background: color-mix(in srgb, var(--attention) 8%, white);
-        border: 1px solid var(--attention);
+    .today-shell {
+        display: grid;
+        gap: var(--space-4);
+        padding-bottom: var(--space-4);
     }
 
-    .consequence-header {
+    .today-hero-card,
+    .today-primary-card,
+    .today-list-card,
+    .today-disclosure,
+    .today-encouragement {
+        border-radius: 24px;
+        background: rgba(255, 255, 255, 0.94);
+        box-shadow: 0 12px 28px rgba(45, 55, 72, 0.08);
+    }
+
+    .today-hero-card {
+        padding: 1.1rem;
+        background: linear-gradient(160deg, rgba(255, 255, 255, 0.98), rgba(236, 244, 242, 0.98));
+    }
+
+    .today-eyebrow {
+        margin-bottom: var(--space-2);
+        font-size: 0.78rem;
+        font-weight: 700;
+        letter-spacing: 0.14em;
+        text-transform: uppercase;
+        color: var(--text-muted);
+    }
+
+    .today-hero-title,
+    .today-primary-card h3,
+    .today-list-card h3,
+    .today-disclosure summary {
+        font-family: "Avenir Next Rounded", "Trebuchet MS", "Segoe UI", sans-serif;
+    }
+
+    .today-hero-title {
+        margin-bottom: var(--space-3);
+        font-size: clamp(1.8rem, 6vw, 2.4rem);
+        line-height: 1.05;
+    }
+
+    .today-hero-copy,
+    .primary-task-copy,
+    .today-task p,
+    .today-disclosure-panel p,
+    .empty-state {
+        color: var(--text-secondary);
+    }
+
+    .today-progress {
+        display: flex;
+        flex-direction: column;
+        gap: 0.5rem;
+        margin-top: var(--space-4);
+        font-size: 0.9rem;
+        color: var(--text-secondary);
+    }
+
+    .today-progress-track {
+        width: 100%;
+        height: 10px;
+        border-radius: 999px;
+        background: #dfe8e6;
+        overflow: hidden;
+    }
+
+    .today-progress-track span {
+        display: block;
+        height: 100%;
+        border-radius: inherit;
+        background: linear-gradient(90deg, var(--success) 0%, var(--primary) 100%);
+    }
+
+    .today-primary-card,
+    .today-list-card {
+        padding: 1rem;
+    }
+
+    .section-header {
         display: flex;
         align-items: center;
-        gap: 0.5rem;
-        margin-bottom: 0.75rem;
+        justify-content: space-between;
+        gap: var(--space-3);
+        margin-bottom: var(--space-4);
     }
 
-    .consequence-icon {
+    .section-header h3 {
+        margin: 0;
         font-size: 1.25rem;
     }
 
-    .consequence-title {
-        font-size: 1rem;
-        font-weight: 600;
-        color: var(--attention-dark);
-        margin: 0;
-    }
-
-    .consequence-name {
+    .soft-badge {
+        display: inline-flex;
+        align-items: center;
+        padding: 0.35rem 0.65rem;
+        border-radius: 999px;
+        background: rgba(74, 144, 164, 0.12);
+        color: var(--primary-dark);
+        font-size: 0.8rem;
         font-weight: 700;
-        font-size: 1.125rem;
+        text-transform: lowercase;
+    }
+
+    .primary-task-title {
+        display: block;
+        font-size: 1.25rem;
         color: var(--text-primary);
-        margin-bottom: 0.75rem;
+        margin-bottom: 0.5rem;
     }
 
-    .consequence-section {
-        margin-bottom: 0.75rem;
+    .today-chip-row {
+        display: grid;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        gap: 0.75rem;
     }
 
-    .consequence-section:last-child {
-        margin-bottom: 0;
+    .today-chip {
+        padding: 0.85rem 0.75rem;
+        border-radius: 20px;
+        background: rgba(232, 167, 86, 0.14);
+        text-align: center;
+        color: #6e562f;
+        min-height: 100%;
     }
 
-    .consequence-section-label {
-        font-size: 0.75rem;
-        font-weight: 600;
+    .today-chip strong,
+    .today-chip span {
+        display: block;
+    }
+
+    .today-chip strong {
+        font-size: 0.72rem;
         text-transform: uppercase;
         letter-spacing: 0.05em;
-        color: var(--text-muted);
-        margin-bottom: 0.25rem;
     }
 
-    .consequence-paused-list {
+    .today-chip span {
+        margin-top: 0.35rem;
+        font-size: 0.9rem;
+        font-weight: 600;
+        line-height: 1.35;
+    }
+
+    .today-task {
         display: flex;
-        flex-wrap: wrap;
-        gap: 0.5rem;
+        align-items: start;
+        gap: 0.75rem;
+        padding: 0.9rem 0;
+        border-top: 1px solid rgba(45, 55, 72, 0.08);
     }
 
-    .consequence-paused-item {
-        font-size: 0.875rem;
-        color: var(--attention-dark);
-        background: rgba(255,255,255,0.6);
-        padding: 0.25rem 0.5rem;
-        border-radius: var(--border-radius);
+    .today-task:first-of-type {
+        border-top: 0;
+        padding-top: 0;
     }
 
-    .consequence-review {
-        font-size: 0.9375rem;
+    .today-task:last-of-type {
+        padding-bottom: 0;
+    }
+
+    .today-task-mark {
+        min-width: 4.25rem;
+        padding: 0.35rem 0.5rem;
+        border-radius: 999px;
+        background: #edf3f2;
         color: var(--text-primary);
-        font-weight: 500;
-    }
-
-    .consequence-nextstep {
-        padding: 0.75rem;
-        background: rgba(255,255,255,0.5);
-        border-radius: var(--border-radius);
-    }
-
-    .consequence-nextstep-text {
-        margin: 0;
-        font-size: 0.9375rem;
-        color: var(--text-secondary);
-        line-height: 1.5;
-    }
-
-    .consequence-text {
-        color: var(--text-secondary);
-        font-size: 0.9375rem;
-    }
-
-    /* Progress ring */
-    .progress-ring {
-        display: inline-block;
-    }
-
-    .progress-ring-bg {
-        fill: none;
-        stroke: var(--gray-200);
-        stroke-width: 8;
-    }
-
-    .progress-ring-progress {
-        fill: none;
-        stroke: var(--secondary);
-        stroke-width: 8;
-        stroke-linecap: round;
-        transition: stroke-dashoffset 0.5s ease;
-    }
-
-    .progress-ring-text {
-        font-size: 1.75rem;
+        text-align: center;
+        font-size: 0.75rem;
         font-weight: 700;
-        fill: var(--text-primary);
     }
 
-    .progress-ring-label {
-        font-size: 0.875rem;
-        fill: var(--text-muted);
+    .today-task.done .today-task-mark {
+        background: rgba(124, 181, 134, 0.18);
+        color: var(--success-dark);
     }
 
-    /* Checklist styles */
-    .checklist {
-        list-style: none;
-        padding: 0;
-        margin: 0;
+    .today-task.waiting .today-task-mark {
+        background: rgba(74, 144, 164, 0.15);
+        color: var(--primary-dark);
     }
 
-    .checklist-item {
-        display: flex;
-        align-items: center;
-        gap: 1rem;
-        padding: 1rem;
-        background: var(--gray-50);
-        border-radius: var(--border-radius);
-        margin-bottom: 0.75rem;
-        transition: all 0.2s ease;
-    }
-
-    .checklist-item:last-child {
-        margin-bottom: 0;
-    }
-
-    .checklist-checkbox {
-        flex-shrink: 0;
-        width: 40px;
-        height: 40px;
-        border: 3px solid var(--gray-300);
-        border-radius: 10px;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        font-size: 1.25rem;
-        font-weight: 700;
-        background: white;
-    }
-
-    .checklist-item.completed .checklist-checkbox {
-        background: var(--success);
-        border-color: var(--success);
-        color: white;
-    }
-
-    .checklist-item.pending .checklist-checkbox {
-        background: var(--warning-light);
-        border-color: var(--warning);
-        color: var(--warning-dark);
-    }
-
-    .checklist-item.rejected .checklist-checkbox {
-        background: color-mix(in srgb, var(--attention) 20%, white);
-        border-color: var(--attention);
+    .today-task.retry .today-task-mark {
+        background: rgba(232, 167, 86, 0.18);
         color: var(--attention-dark);
     }
 
-    .checklist-content {
+    .today-task.current .today-task-mark {
+        background: rgba(107, 142, 123, 0.18);
+        color: var(--secondary-dark);
+    }
+
+    .today-task-body {
         flex: 1;
         min-width: 0;
     }
 
-    .checklist-title {
-        font-weight: 600;
-        font-size: 1.0625rem;
-        color: var(--text-primary);
+    .today-task-body strong {
+        display: block;
+        margin-bottom: 0.2rem;
     }
 
-    .checklist-item.completed .checklist-title {
-        text-decoration: line-through;
-        color: var(--text-muted);
+    .today-task-body p {
+        margin: 0;
+        font-size: 0.92rem;
     }
 
-    .checklist-meta {
-        font-size: 0.875rem;
-        color: var(--text-muted);
-        margin-top: 0.125rem;
-    }
-
-    .checklist-action {
+    .task-link {
         flex-shrink: 0;
-        padding: 0.5rem 1rem;
-        background: var(--secondary);
-        color: white;
-        border-radius: var(--border-radius);
-        text-decoration: none;
-        font-weight: 600;
-        font-size: 0.875rem;
-    }
-
-    .text-success { color: var(--success); }
-    .text-warning { color: var(--warning-dark); }
-    .text-attention { color: var(--attention); }
-
-    .rejection-hint {
-        margin-top: 0.25rem;
-        padding: 0.25rem 0.5rem;
-        background: color-mix(in srgb, var(--attention) 8%, white);
-        border-radius: var(--border-radius);
-        font-size: 0.8125rem;
-        color: var(--text-secondary);
-    }
-
-    /* Big action button */
-    .big-action-btn {
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        text-align: center;
-        padding: 1.5rem;
-        background: var(--secondary);
-        color: white;
-        border-radius: var(--border-radius-lg);
-        text-decoration: none;
-        transition: transform 0.2s, box-shadow 0.2s;
-        box-shadow: var(--shadow-md);
-    }
-
-    .big-action-btn:hover {
-        transform: translateY(-2px);
-        box-shadow: var(--shadow-lg);
-    }
-
-    .big-action-btn:active {
-        transform: scale(0.98);
-    }
-
-    .big-action-btn-icon {
-        font-size: 2rem;
-        margin-bottom: 0.5rem;
-    }
-
-    .big-action-btn-text {
-        font-size: 1.125rem;
+        align-self: center;
+        font-size: 0.9rem;
         font-weight: 700;
     }
 
-    .big-action-btn-sub {
-        font-size: 0.875rem;
-        opacity: 0.9;
-        margin-top: 0.25rem;
+    .today-disclosure {
+        overflow: hidden;
     }
 
-    /* Encouragement */
-    .encouragement {
+    .today-disclosure summary {
+        list-style: none;
+        cursor: pointer;
         padding: 1rem;
-        text-align: center;
+        font-weight: 700;
+        color: var(--text-primary);
     }
 
-    .encouragement-emoji {
-        font-size: 2rem;
-        display: block;
-        margin-bottom: 0.5rem;
+    .today-disclosure summary::-webkit-details-marker {
+        display: none;
     }
 
-    .encouragement p {
-        color: var(--text-secondary);
+    .today-disclosure-panel {
+        padding: 0 1rem 1rem;
     }
 
-    .success-encouragement {
+    .disclosure-actions {
+        margin-top: var(--space-4);
+    }
+
+    .caregiver-note.open-tone {
+        background: color-mix(in srgb, var(--attention) 8%, white);
+    }
+
+    .today-encouragement {
+        padding: 1rem 1.1rem;
         background: color-mix(in srgb, var(--success) 10%, white);
-        border-radius: var(--border-radius);
+        color: var(--success-dark);
+        text-align: center;
+        font-weight: 600;
     }
 
-    .success-encouragement p {
-        color: var(--success-dark);
-        font-weight: 600;
+    @media (max-width: 640px) {
+        .today-shell {
+            gap: 0.9rem;
+        }
+
+        .today-hero-card,
+        .today-primary-card,
+        .today-list-card,
+        .today-disclosure,
+        .today-encouragement {
+            margin-left: 0;
+            margin-right: 0;
+            border-radius: 22px;
+        }
+
+        .today-chip-row {
+            grid-template-columns: 1fr;
+        }
+
+        .today-task {
+            flex-wrap: wrap;
+        }
+
+        .task-link {
+            width: 100%;
+            padding-top: 0.25rem;
+        }
     }
 </style>
 @endpush

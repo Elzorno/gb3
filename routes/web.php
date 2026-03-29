@@ -40,6 +40,8 @@ Route::get('/', function () {
     return redirect()->route('app.login');
 })->name('home');
 
+Route::view('/design-lab/layouts', 'design.layouts')->name('design.layouts');
+
 // =============================================================================
 // Admin Authentication (no middleware - these are the login forms)
 // =============================================================================
