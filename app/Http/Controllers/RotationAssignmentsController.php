@@ -51,10 +51,13 @@ class RotationAssignmentsController extends Controller
                 ->where('day', $date->format('Y-m-d'))
                 ->where('status', 'rejected')
                 ->whereIn('slot_id', $rejectedSlotIds)
-                ->whereNotNull('review_note')
+                ->where(function ($query): void {
+                    $query->whereNotNull('kid_note')
+                        ->orWhereNotNull('review_note');
+                })
                 ->get()
                 ->keyBy('slot_id')
-                ->map(fn($s) => $s->review_note)
+                ->map(fn($s) => $s->kid_note ?? $s->review_note)
                 ->all();
         }
 

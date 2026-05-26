@@ -9,6 +9,7 @@ use App\Domain\Payout\PayoutService;
 use App\Models\Kid;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Str;
 use Illuminate\View\View;
 
 class BonusController extends Controller
@@ -99,14 +100,11 @@ class BonusController extends Controller
         $ext = in_array($file->getClientOriginalExtension(), ['jpg','jpeg','png','gif','webp','heic','heif'], true)
             ? $file->getClientOriginalExtension()
             : 'jpg';
-        $filename = sprintf(
-            'bonus_%s_%d_%d.%s',
-            now()->format('Y-m-d'),
-            $kidId,
-            $v['instance_id'],
-            $ext
+        $path = $file->storeAs(
+            'proofs/bonuses/' . now()->format('Y/m'),
+            Str::uuid()->toString() . '.' . $ext,
+            'local'
         );
-        $path = $file->storeAs('uploads/proofs', $filename, 'public');
 
         try {
             $this->bonus->submitProof((int)$v['instance_id'], $kidId, $path);

@@ -132,7 +132,8 @@
         background: var(--bg-card);
         border-radius: var(--border-radius-lg);
         box-shadow: var(--shadow-md);
-        overflow: hidden;
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
     }
     
     .admin-table table {
@@ -226,6 +227,14 @@
     }
     
     @media (max-width: 768px) {
+        .admin-table table {
+            min-width: 34rem;
+        }
+
+        .stats-grid {
+            grid-template-columns: 1fr;
+        }
+
         .menu-toggle {
             display: flex;
             align-items: center;

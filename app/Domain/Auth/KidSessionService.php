@@ -44,12 +44,15 @@ class KidSessionService
 
     public function loginKid(Request $request, int $kidId): void
     {
+        $request->session()->regenerate();
         $request->session()->put('gb2_kid_id', $kidId);
         $request->session()->put('gb2_kid_logged_in_at', now()->toIso8601String());
     }
 
     public function logoutKid(Request $request): void
     {
-        $request->session()->forget(['gb2_kid_id', 'gb2_kid_logged_in_at']);
+        $request->session()->forget(['gb2_kid_id', 'gb2_kid_logged_in_at', 'kid_name']);
+        $request->session()->invalidate();
+        $request->session()->regenerateToken();
     }
 }

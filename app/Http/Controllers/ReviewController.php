@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers;
 
+use App\Domain\Auth\AdminSessionService;
 use App\Domain\Submission\SubmissionService;
 use App\Models\Kid;
 use App\Models\PayoutRequest;
@@ -16,6 +17,7 @@ class ReviewController extends Controller
 {
     public function __construct(
         private readonly SubmissionService $service,
+        private readonly AdminSessionService $adminSession,
     ) {
     }
 
@@ -70,13 +72,18 @@ class ReviewController extends Controller
         $v = $request->validate([
             'submission_id' => ['required', 'integer', 'min:1'],
             'decision' => ['required', 'in:approved,rejected'],
-            'note' => ['nullable', 'string', 'max:400'],
+            'kid_note' => ['nullable', 'string', 'max:400'],
+            'admin_note' => ['nullable', 'string', 'max:400'],
         ]);
 
-        $this->service->review(
+        $this->service->reviewWithContext(
             (int)$v['submission_id'],
             (string)$v['decision'],
-            isset($v['note']) ? (string)$v['note'] : null,
+            isset($v['kid_note']) ? (string)$v['kid_note'] : null,
+            isset($v['admin_note']) ? (string)$v['admin_note'] : null,
+            'admin_session',
+            $this->adminSession->actorId($request),
+            $this->adminSession->auditKey($request),
         );
 
         return redirect()->route('admin.reviews')->with('status', 'Review decision saved.');

@@ -97,8 +97,9 @@ class PayoutService
         ?string $note = null,
         string $actorType = 'admin',
         int $actorId = 0,
+        ?string $actorSessionKey = null,
     ): PayoutRequest {
-        return $this->db->transaction(function () use ($requestId, $note, $actorType, $actorId): PayoutRequest {
+        return $this->db->transaction(function () use ($requestId, $note, $actorType, $actorId, $actorSessionKey): PayoutRequest {
             /** @var PayoutRequest $req */
             $req = PayoutRequest::query()->lockForUpdate()->findOrFail($requestId);
 
@@ -124,6 +125,7 @@ class PayoutService
             $req->reviewed_at = CarbonImmutable::now('UTC');
             $req->reviewed_by_actor_type = $actorType;
             $req->reviewed_by_actor_id = $actorId;
+            $req->reviewed_by_session_key = $actorSessionKey;
             $req->review_note = $note;
             $req->save();
 
@@ -139,8 +141,9 @@ class PayoutService
         ?string $note = null,
         string $actorType = 'admin',
         int $actorId = 0,
+        ?string $actorSessionKey = null,
     ): PayoutRequest {
-        return $this->db->transaction(function () use ($requestId, $note, $actorType, $actorId): PayoutRequest {
+        return $this->db->transaction(function () use ($requestId, $note, $actorType, $actorId, $actorSessionKey): PayoutRequest {
             /** @var PayoutRequest $req */
             $req = PayoutRequest::query()->lockForUpdate()->findOrFail($requestId);
 
@@ -152,6 +155,7 @@ class PayoutService
             $req->reviewed_at = CarbonImmutable::now('UTC');
             $req->reviewed_by_actor_type = $actorType;
             $req->reviewed_by_actor_id = $actorId;
+            $req->reviewed_by_session_key = $actorSessionKey;
             $req->review_note = $note;
             $req->save();
 

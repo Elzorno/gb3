@@ -151,6 +151,8 @@
             display: flex;
             align-items: center;
             justify-content: space-between;
+            flex-wrap: wrap;
+            gap: var(--space-3);
             margin-bottom: var(--space-4);
             padding-bottom: var(--space-4);
             border-bottom: 1px solid var(--border-color);
@@ -562,6 +564,16 @@
             /* When using bottom nav, add padding to main content */
             .has-bottom-nav .main {
                 padding-bottom: calc(70px + var(--safe-area-bottom) + var(--space-6));
+            }
+
+            .pin-input {
+                gap: var(--space-2);
+            }
+
+            .pin-digit {
+                width: 42px;
+                height: 56px;
+                font-size: 1.25rem;
             }
         }
         

@@ -124,9 +124,9 @@
                                     {{ $sub->submitted_at?->diffForHumans() ?? 'Unknown' }}
                                 </span>
                             </div>
-                            @if($sub->status === 'rejected' && $sub->review_note)
+                            @if($sub->status === 'rejected' && ($sub->kid_note ?? $sub->review_note))
                                 <div class="history-note">
-                                    {{ $sub->review_note }}
+                                    {{ $sub->kid_note ?? $sub->review_note }}
                                 </div>
                             @endif
                             @if($sub->status === 'rejected')
@@ -408,6 +408,40 @@
 
     .ledger-amount.negative {
         color: var(--attention-dark);
+    }
+
+    @media (max-width: 640px) {
+        .stats-row {
+            grid-template-columns: 1fr;
+        }
+
+        .filter-tabs {
+            overflow-x: auto;
+            padding-bottom: 0.35rem;
+            scrollbar-width: none;
+        }
+
+        .filter-tabs::-webkit-scrollbar {
+            display: none;
+        }
+
+        .filter-tab {
+            flex: 0 0 auto;
+            min-width: 6rem;
+        }
+
+        .history-item {
+            flex-direction: column;
+        }
+
+        .history-meta {
+            flex-direction: column;
+            gap: 0.25rem;
+        }
+
+        .history-status-badge {
+            width: 100%;
+        }
     }
 </style>
 @endpush

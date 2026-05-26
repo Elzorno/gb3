@@ -24,7 +24,10 @@ class Submission extends Model
         'submitted_at',
         'reviewed_at',
         'reviewed_by_admin_id',
+        'reviewed_by_session_key',
         'review_note',
+        'kid_note',
+        'admin_note',
     ];
 
     protected $casts = [

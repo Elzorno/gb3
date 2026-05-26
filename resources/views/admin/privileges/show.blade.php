@@ -191,7 +191,7 @@
     <style>
         .privilege-detail-grid {
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+            grid-template-columns: repeat(auto-fit, minmax(min(100%, 350px), 1fr));
             gap: 1.5rem;
         }
 
@@ -260,6 +260,29 @@
             display: flex;
             flex-direction: column;
             gap: 0.5rem;
+        }
+
+        @media (max-width: 640px) {
+            .privilege-toggle-row {
+                flex-direction: column;
+                align-items: stretch;
+                gap: 0.75rem;
+            }
+
+            .privilege-info {
+                min-width: 0;
+            }
+
+            .balance-display .flex {
+                align-items: flex-start;
+                flex-direction: column;
+                gap: 0.25rem;
+            }
+
+            .form-group .flex.gap-2.items-center {
+                flex-direction: column;
+                align-items: stretch;
+            }
         }
     </style>
 @endsection

@@ -85,7 +85,7 @@
 
     {{-- Filter bar --}}
     <div class="card mb-4">
-        <form method="GET" action="{{ route('admin.reviews') }}" class="flex flex-wrap gap-4 items-end">
+        <form method="GET" action="{{ route('admin.reviews') }}" class="review-filter-form flex flex-wrap gap-4 items-end">
             <div class="form-group mb-0" style="min-width: 150px;">
                 <label for="status" class="form-label">Status</label>
                 <select name="status" id="status" class="form-input">
@@ -160,9 +160,9 @@
                         {{-- Proof image --}}
                         @if($submission->proof_path)
                             <div class="review-proof" style="flex: 0 0 150px;">
-                                <a href="{{ asset('storage/' . $submission->proof_path) }}" target="_blank">
+                                <a href="{{ route('admin.submissions.proof', $submission) }}" target="_blank" rel="noreferrer">
                                     <img 
-                                        src="{{ asset('storage/' . $submission->proof_path) }}" 
+                                        src="{{ route('admin.submissions.proof', $submission) }}" 
                                         alt="Proof photo"
                                         style="width: 150px; height: 150px; object-fit: cover; border-radius: var(--border-radius);"
                                     >
@@ -192,9 +192,16 @@
                                 &bull; {{ $submission->day?->format('M j, Y') ?? '' }}
                             </p>
 
-                            @if($submission->status !== 'pending' && $submission->review_note)
+                            @if($submission->status !== 'pending' && ($submission->admin_note || $submission->kid_note || $submission->review_note))
                                 <div class="review-note mt-2 p-2" style="background: var(--gray-100); border-radius: var(--border-radius);">
-                                    {{ $submission->review_note }}
+                                    @if($submission->kid_note)
+                                        <div><strong>Kid note:</strong> {{ $submission->kid_note }}</div>
+                                    @elseif($submission->review_note)
+                                        <div><strong>Kid note:</strong> {{ $submission->review_note }}</div>
+                                    @endif
+                                    @if($submission->admin_note)
+                                        <div class="mt-1"><strong>Internal note:</strong> {{ $submission->admin_note }}</div>
+                                    @endif
                                 </div>
                             @endif
                             @if($submission->reviewed_at)
@@ -261,7 +268,7 @@
                 <input type="hidden" name="decision" value="rejected">
 
                 <div class="form-group mb-3">
-                    <label class="form-label">Quick reason (tap one):</label>
+                    <label class="form-label">Kid-facing quick reason (tap one):</label>
                     <div class="reject-templates">
                         <button type="button" class="reject-tpl" data-text="Photo was unclear or blurry — please retake and resubmit.">Photo unclear</button>
                         <button type="button" class="reject-tpl" data-text="Looks like one more step is needed — please finish up.">Needs one more step</button>
@@ -271,15 +278,26 @@
                 </div>
                 
                 <div class="form-group">
-                    <label for="reject-note" class="form-label">Note</label>
+                    <label for="reject-kid-note" class="form-label">Kid-facing note</label>
                     <textarea 
-                        name="note" 
-                        id="reject-note" 
+                        name="kid_note" 
+                        id="reject-kid-note" 
                         class="form-input"
                         rows="3"
                         placeholder="Keep it neutral and clear..."
                     ></textarea>
                     <p class="form-hint">This note will be visible to the child. Keep it neutral and encouraging.</p>
+                </div>
+
+                <div class="form-group">
+                    <label for="reject-admin-note" class="form-label">Internal note</label>
+                    <textarea
+                        name="admin_note"
+                        id="reject-admin-note"
+                        class="form-input"
+                        rows="2"
+                        placeholder="Optional note for caregiver/admin context only..."
+                    ></textarea>
                 </div>
 
                 <div class="flex gap-3 justify-end">
@@ -336,6 +354,10 @@
         }
         .review-card:hover {
             box-shadow: var(--shadow-md);
+        }
+
+        .review-content {
+            align-items: flex-start;
         }
 
         .payout-review-card {
@@ -415,13 +437,69 @@
             border-color: var(--attention);
             background: var(--attention-light);
         }
+
+        @media (max-width: 820px) {
+            .review-filter-form {
+                display: grid;
+                grid-template-columns: 1fr;
+            }
+
+            .review-filter-form .form-group {
+                min-width: 0 !important;
+            }
+
+            .review-content {
+                flex-direction: column;
+            }
+
+            .review-proof,
+            .payout-review-summary {
+                width: 100%;
+                flex: none !important;
+                min-height: 120px;
+            }
+
+            .review-proof img,
+            .review-proof > div {
+                width: 100% !important;
+                max-width: none;
+                height: min(60vw, 220px) !important;
+            }
+
+            .review-actions {
+                width: 100%;
+                flex-direction: row !important;
+                flex-wrap: wrap;
+            }
+
+            .review-actions form,
+            .review-actions .btn {
+                flex: 1 1 12rem;
+            }
+
+            .review-actions .btn,
+            .review-actions form .btn {
+                width: 100%;
+            }
+        }
+
+        @media (max-width: 520px) {
+            .modal-content {
+                width: calc(100% - 1.5rem);
+            }
+
+            .review-actions {
+                flex-direction: column !important;
+            }
+        }
     </style>
 
     <script>
         function showRejectModal(submissionId, kidName) {
             document.getElementById('reject-submission-id').value = submissionId;
             document.getElementById('reject-kid-name').textContent = kidName;
-            document.getElementById('reject-note').value = '';
+            document.getElementById('reject-kid-note').value = '';
+            document.getElementById('reject-admin-note').value = '';
             document.querySelectorAll('.reject-tpl').forEach(b => b.classList.remove('active'));
             document.getElementById('reject-modal').style.display = 'flex';
         }
@@ -446,7 +524,7 @@
             btn.addEventListener('click', function() {
                 document.querySelectorAll('.reject-tpl').forEach(b => b.classList.remove('active'));
                 this.classList.add('active');
-                document.getElementById('reject-note').value = this.dataset.text;
+                document.getElementById('reject-kid-note').value = this.dataset.text;
             });
         });
 

@@ -22,6 +22,7 @@ class PayoutRequest extends Model
         'reviewed_at',
         'reviewed_by_actor_type',
         'reviewed_by_actor_id',
+        'reviewed_by_session_key',
         'review_note',
     ];
 

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers;
 
+use App\Domain\Auth\AdminSessionService;
 use App\Domain\Payout\PayoutService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -12,6 +13,7 @@ class PayoutController extends Controller
 {
     public function __construct(
         private readonly PayoutService $payout,
+        private readonly AdminSessionService $adminSession,
     ) {
     }
 
@@ -52,10 +54,22 @@ class PayoutController extends Controller
 
         try {
             if ($decision === 'approved') {
-                $this->payout->approve($payoutId, $note, 'admin', 1);
+                $this->payout->approve(
+                    $payoutId,
+                    $note,
+                    'admin_session',
+                    $this->adminSession->actorId($request),
+                    $this->adminSession->auditKey($request),
+                );
                 $message = 'Payout approved and bank deducted.';
             } else {
-                $this->payout->deny($payoutId, $note, 'admin', 1);
+                $this->payout->deny(
+                    $payoutId,
+                    $note,
+                    'admin_session',
+                    $this->adminSession->actorId($request),
+                    $this->adminSession->auditKey($request),
+                );
                 $message = 'Payout request denied.';
             }
 

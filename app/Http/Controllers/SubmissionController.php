@@ -10,7 +10,7 @@ use App\Models\Kid;
 use Carbon\CarbonImmutable;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Str;
 use Illuminate\View\View;
 
 class SubmissionController extends Controller
@@ -79,16 +79,11 @@ class SubmissionController extends Controller
         $ext = in_array($file->getClientOriginalExtension(), ['jpg','jpeg','png','gif','webp','heic','heif'], true)
             ? $file->getClientOriginalExtension()
             : 'jpg';
-        $filename = sprintf(
-            '%s_%d_%d.%s',
-            $v['day'],
-            $kidId,
-            $v['slot_id'],
-            $ext
+        $path = $file->storeAs(
+            'proofs/submissions/' . now()->format('Y/m'),
+            Str::uuid()->toString() . '.' . $ext,
+            'local'
         );
-        
-        // Store in public uploads directory
-        $path = $file->storeAs('uploads/proofs', $filename, 'public');
 
         $this->service->submitBase(
             $kidId,

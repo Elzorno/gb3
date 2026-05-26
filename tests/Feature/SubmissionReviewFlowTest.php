@@ -18,7 +18,7 @@ class SubmissionReviewFlowTest extends TestCase
 
     public function test_kid_can_submit_base_chore_and_queue_it_for_review(): void
     {
-        Storage::fake('public');
+        Storage::fake('local');
 
         $kid = Kid::query()->create([
             'display_name' => 'Megan',
@@ -105,7 +105,8 @@ class SubmissionReviewFlowTest extends TestCase
         $res = $this->withSession($adminSession)->post('/admin/reviews/decide', [
             'submission_id' => $submissionId,
             'decision' => 'approved',
-            'note' => 'Looks good',
+            'kid_note' => 'Looks good',
+            'admin_note' => 'Approved after review',
         ]);
 
         $res->assertRedirect(route('admin.reviews'));
@@ -113,7 +114,8 @@ class SubmissionReviewFlowTest extends TestCase
         $this->assertDatabaseHas('submissions', [
             'id' => $submissionId,
             'status' => 'approved',
-            'review_note' => 'Looks good',
+            'kid_note' => 'Looks good',
+            'admin_note' => 'Approved after review',
         ]);
 
         $this->assertDatabaseHas('assignments', [

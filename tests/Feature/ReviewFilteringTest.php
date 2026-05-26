@@ -61,7 +61,8 @@ class ReviewFilteringTest extends TestCase
             ->get('/admin/reviews?status=approved&kind=bonus');
 
         $res->assertOk();
-        $res->assertSee('uploads/bonus-approved.jpg');
-        $res->assertDontSee('uploads/base-pending.jpg');
+        $res->assertSee('Reviewer Kid');
+        $res->assertSee('Kid note:');
+        $res->assertDontSee('No submissions found');
     }
 }

@@ -50,7 +50,7 @@ class BonusFlowTest extends TestCase
             'claimed_by_kid_id' => $kid->id,
         ]);
 
-        Storage::fake('public');
+        Storage::fake('local');
 
         $submitRes = $this->withSession($kidSession)->post('/app/bonuses/submit', [
             'instance_id' => $inst->id,
@@ -80,14 +80,14 @@ class BonusFlowTest extends TestCase
         $reviewRes = $this->withSession($adminSession)->post('/admin/reviews/decide', [
             'submission_id' => $submission->id,
             'decision' => 'approved',
-            'note' => 'Great work',
+            'kid_note' => 'Great work',
         ]);
         $reviewRes->assertRedirect(route('admin.reviews'));
 
         $this->assertDatabaseHas('submissions', [
             'id' => $submission->id,
             'status' => 'approved',
-            'review_note' => 'Great work',
+            'kid_note' => 'Great work',
         ]);
 
         $this->assertDatabaseHas('bonus_instances', [

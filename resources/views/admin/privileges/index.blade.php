@@ -153,7 +153,7 @@
     <style>
         .privilege-grid {
             display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+            grid-template-columns: repeat(auto-fill, minmax(min(100%, 320px), 1fr));
             gap: 1rem;
         }
 
@@ -236,6 +236,22 @@
             display: flex;
             flex-direction: column;
             gap: 0.5rem;
+        }
+
+        @media (max-width: 640px) {
+            .privilege-item {
+                flex-direction: column;
+                align-items: flex-start;
+            }
+
+            .privilege-status {
+                flex: none;
+            }
+
+            .privilege-until,
+            .privilege-bank {
+                margin-left: 0;
+            }
         }
     </style>
 

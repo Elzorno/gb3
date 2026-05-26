@@ -6,6 +6,7 @@ namespace App\Domain\Auth;
 
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Str;
 
 class AdminSessionService
 {
@@ -43,6 +44,7 @@ class AdminSessionService
         
         $request->session()->put('gb2_admin_logged_in', true);
         $request->session()->put('gb2_admin_logged_in_at', now()->toIso8601String());
+        $request->session()->put('gb2_admin_audit_key', hash('sha256', Str::uuid()->toString()));
     }
 
     /**
@@ -53,6 +55,7 @@ class AdminSessionService
         $request->session()->forget([
             'gb2_admin_logged_in',
             'gb2_admin_logged_in_at',
+            'gb2_admin_audit_key',
         ]);
         
         // Regenerate session ID on logout for security
@@ -120,5 +123,24 @@ class AdminSessionService
             ['key' => 'admin_password_hash'],
             ['value' => $hash, 'updated_at' => now()]
         );
+    }
+
+    public function auditKey(Request $request): string
+    {
+        $auditKey = (string) $request->session()->get('gb2_admin_audit_key', '');
+
+        if ($auditKey !== '') {
+            return $auditKey;
+        }
+
+        $auditKey = hash('sha256', $request->session()->getId() . '|' . (string) $request->ip());
+        $request->session()->put('gb2_admin_audit_key', $auditKey);
+
+        return $auditKey;
+    }
+
+    public function actorId(Request $request): int
+    {
+        return (int) sprintf('%u', crc32($this->auditKey($request)));
     }
 }

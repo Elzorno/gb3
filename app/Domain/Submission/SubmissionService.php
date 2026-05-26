@@ -48,18 +48,33 @@ class SubmissionService
 
     public function review(int $submissionId, string $decision, ?string $note = null): Submission
     {
+        return $this->reviewWithContext($submissionId, $decision, $note, null, 'admin', 0, null);
+    }
+
+    public function reviewWithContext(
+        int $submissionId,
+        string $decision,
+        ?string $kidNote = null,
+        ?string $adminNote = null,
+        string $actorType = 'admin',
+        int $actorId = 0,
+        ?string $actorSessionKey = null,
+    ): Submission {
         if (!in_array($decision, ['approved', 'rejected'], true)) {
             throw new \InvalidArgumentException('Invalid decision');
         }
 
-        return $this->db->transaction(function () use ($submissionId, $decision, $note): Submission {
+        return $this->db->transaction(function () use ($submissionId, $decision, $kidNote, $adminNote, $actorType, $actorId, $actorSessionKey): Submission {
             /** @var Submission $sub */
             $sub = Submission::query()->lockForUpdate()->findOrFail($submissionId);
 
             $sub->status = $decision;
-            $sub->review_note = $note;
+            $sub->review_note = $adminNote;
+            $sub->kid_note = $kidNote;
+            $sub->admin_note = $adminNote;
             $sub->reviewed_at = CarbonImmutable::now('UTC');
-            $sub->reviewed_by_admin_id = 1;
+            $sub->reviewed_by_admin_id = $actorId;
+            $sub->reviewed_by_session_key = $actorSessionKey;
             $sub->save();
 
             if ($sub->kind === 'base' && $sub->day && $sub->kid_id && $sub->slot_id) {
@@ -96,6 +111,8 @@ class SubmissionService
                             'bonus_approved',
                             $sub->id,
                             "Bonus: {$def->title}",
+                            $actorType,
+                            $actorId,
                         );
                     }
                 }
@@ -113,8 +130,11 @@ class SubmissionService
             $previousDecision = $sub->status;
             $sub->status = 'pending';
             $sub->review_note = null;
+            $sub->kid_note = null;
+            $sub->admin_note = null;
             $sub->reviewed_at = null;
             $sub->reviewed_by_admin_id = null;
+            $sub->reviewed_by_session_key = null;
             $sub->save();
 
             // Revert assignment status

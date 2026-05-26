@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\AdminAuthController;
 use App\Http\Controllers\AdminDashboardController;
+use App\Http\Controllers\AdminProofController;
 use App\Http\Controllers\BonusController;
 use App\Http\Controllers\DefinitionController;
 use App\Http\Controllers\FamilyController;
@@ -95,6 +96,7 @@ Route::prefix('admin')->name('admin.')->middleware('admin.auth')->group(function
     Route::get('/reviews', [ReviewController::class, 'index'])->name('reviews');
     Route::post('/reviews/decide', [ReviewController::class, 'decide'])->name('reviews.decide');
     Route::post('/reviews/undo', [ReviewController::class, 'undo'])->name('reviews.undo');
+    Route::get('/submissions/{submission}/proof', [AdminProofController::class, 'show'])->name('submissions.proof');
     
     // Infraction management
     Route::get('/infractions', [InfractionController::class, 'index'])->name('infractions');
